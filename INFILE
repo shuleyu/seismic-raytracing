@@ -1,0 +1,114 @@
+
+# ==========================================================
+#                    ! DIRs and Files !
+# ==========================================================
+
+<WORKDIR>             /home/shule/PROJ/t004.1D
+<BASHCODEDIR>         /home/shule/Research/Fun.Bash.c001
+<CPPCODEDIR>          /home/shule/Research/Fun.C++.c003
+<CPPCOMP>             c++
+<CPPFLAG>             -std=c++14 -Wall
+
+# a01.
+<EVDE>                500
+                      -- in km.
+					     For depth phases, set EVDE to 0, then adjust the "RayPath settings"
+					     to end at the original event depth.
+
+<TakeOffAngle>        5
+                      -- in deg.
+
+<CriticalAngle>       89.99
+                      -- in deg. The criteria for "turning".
+
+<OutFileName>         Ray.txt
+
+
+## Layer settings (in km).
+## Will mesh a velocity grid using these parameters.
+## DepthN, Interval. Interval gives layer increment between DepthN and DepthN+1).
+## -1 is a placeholder.
+<LayerSetting_BEGIN>
+
+0          0.01
+800        0.1
+2791       0.01
+2991       0.1
+5049.5     0.05
+5249.5     0.1
+6371.0     -1
+
+<LayerSetting_END>
+
+# ===============================================================
+# Conversion depths with their next phase with their .
+# 1 for reflection , others for transmission.
+# ===============================================================
+
+## RayPath settings.
+## The ray will be traced using these parameters.
+## -1 and '-' are placeholders.
+## ChangeDepth (in km), reflction(R)/transmission(T) flag at ChangeDepth, ChangeToWaveType(S or P) after ChangeDepth.
+<RayPathSetting_BEGIN>
+
+-1         -      P
+5149.5     -      P
+6371.0     -      P
+5149.5     -      P
+0          -      -
+
+<RayPathSetting_END>
+
+# b01.
+<PLOTSIZE>            7
+
+
+# Backups for RayPath settings.
+
+ScS =====
+-1         -      S
+2891.0     R      S
+0          -      -
+
+ScP =====
+-1         -      S
+2891.0     R      P
+0          -      -
+
+S^660S ======
+-1         -      S
+3000.0     -      S
+660.0      R      S
+3000.0     -      S
+0          -      -
+
+PKJKP =======
+
+-1         -      P
+5149.5     -      S
+6371.0     -      S
+5149.5     -      P
+0          -      -
+
+SKS =======
+
+-1         -      S
+2891.0     -      P
+5149.5     -      P
+2891.0     -      S
+0          -      -
+
+ScSScSScS ======
+-1         -     S
+2891.0     R     S
+0          R     S
+2891.0     R     S
+0          R     S
+2891.0     R     S
+0          -     -
+
+s^370S ------ set EVDE to 0 (reverse the source and receiver)
+-1         -     S
+2891.0     -     S
+370        R     S
+500        -     -
