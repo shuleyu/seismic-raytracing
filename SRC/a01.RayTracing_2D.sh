@@ -9,8 +9,7 @@
 
 echo ""
 echo "--> `basename $0` is running."
-mkdir -p ${WORKDIR}
-cd ${WORKDIR}
+rm -f ${WORKDIR}/${OutFilePrefix}*
 trap "rm -f ${WORKDIR}/tmpfile*$$ ${WORKDIR}/*_${RunNumber}; exit 1" SIGINT
 
 # ==============================================
@@ -18,21 +17,23 @@ trap "rm -f ${WORKDIR}/tmpfile*$$ ${WORKDIR}/*_${RunNumber}; exit 1" SIGINT
 # ==============================================
 
 # C++ code.
-${EXECDIR}/ConstructRayPath.out 0 3 3 << EOF
+${EXECDIR}/TraceIt.out 4 6 3 << EOF
+${TS}
+${TD}
+${RD}
+${MaximumLegs}
 ${WORKDIR}/tmpfile_LayerSetting_${RunNumber}
-${WORKDIR}/tmpfile_RayPathSetting_${RunNumber}
-${WORKDIR}/${OutFileName}
+${WORKDIR}/tmpfile_KeyDepths_${RunNumber}
+${WORKDIR}/tmpfile_Polygons_${RunNumber}
+${WORKDIR}/${OutFilePrefix}
+${WORKDIR}/${OutInfoFile}
+${StartWith}
 ${TakeOffAngle}
 ${EVDE}
 ${CriticalAngle}
 EOF
 
-if [ $? -ne 0 ]
-then
-    echo "C++ code Failed ..."
-    rm -f tmpfile*$$
-    exit 1
-fi
+[ $? -ne 0 ] && echo "C++ code Failed ..." && rm -f tmpfile*$$ && exit 1
 
 # Clean up.
 rm -f tmpfile*$$

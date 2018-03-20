@@ -3,7 +3,7 @@
 #                    ! DIRs and Files !
 # ==========================================================
 
-<WORKDIR>             /home/shule/PROJ/t004.1D
+<WORKDIR>             /home/shule/PROJ/t058.RayTracing_2D
 <BASHCODEDIR>         /home/shule/Research/Fun.Bash.c001
 <CPPCODEDIR>          /home/shule/Research/Fun.C++.c003
 <CPPCOMP>             c++
@@ -15,13 +15,33 @@
 					     For depth phases, set EVDE to 0, then adjust the "RayPath settings"
 					     to end at the original event depth.
 
-<TakeOffAngle>        5
+<TakeOffAngle>        23.85
                       -- in deg.
 
 <CriticalAngle>       89.99
                       -- in deg. The criteria for "turning".
 
-<OutFileName>         Ray.txt
+<StartWith>           S
+                      -- Chose from "S", "P", "Both"(default)
+
+<MaximumLegs>         2
+                      -- Calculation limits.
+					  	 Notice the number of rays increase exponentially ~ O(3^N)
+					     With all possible reflection/transmission turned on, MaximumLegs=6
+
+
+
+<TS>                  1
+<TD>                  0
+<RD>                  0
+					  -- For clearance, supress unwanted rays.
+					  TD: transmission, Difference wave-type (if possible).
+					  TS: transmission, Same wave-type (if possible).
+					  RD: reflection, Different wave-type wave-type (if possible).
+					  RS: reflection, same wave-type. Notice this is always possible, so the code always do this (to avoid halting)
+
+<OutFilePrefix>       Ray_
+<OutInfoFile>         Info.txt
 
 
 ## Layer settings (in km).
@@ -30,85 +50,250 @@
 ## -1 is a placeholder.
 <LayerSetting_BEGIN>
 
-0          0.01
+0          0.1
 800        0.1
-2791       0.01
+2791       0.1
 2991       0.1
-5049.5     0.05
+5049.5     0.1
 5249.5     0.1
 6371.0     -1
 
 <LayerSetting_END>
 
-# ===============================================================
-# Conversion depths with their next phase with their .
-# 1 for reflection , others for transmission.
-# ===============================================================
-
 ## RayPath settings.
-## The ray will be traced using these parameters.
-## -1 and '-' are placeholders.
-## ChangeDepth (in km), reflction(R)/transmission(T) flag at ChangeDepth, ChangeToWaveType(S or P) after ChangeDepth.
-<RayPathSetting_BEGIN>
+## Will do both reflection/transmission to both P/S at these depths.
+<KeyDepths_BEGIN>
 
--1         -      P
-5149.5     -      P
-6371.0     -      P
-5149.5     -      P
-0          -      -
+0
+2891
+5149.5
+6371.0
 
-<RayPathSetting_END>
+<KeyDepths_END>
+
+## Region settings.
+## > dVp1 dVs1 (in %)
+## theta,radius
+## ...
+##
+## > dVp2 dVs2
+## theta,radius
+## ...
+##
+## > -1 -1  # Seal it with "> -1 -1"
+<Polygons_BEGIN>
+
+> -20 -20
+29.26 3480
+29.36 3480
+29.46 3480
+29.56 3480
+29.66 3480
+29.76 3480
+29.86 3480
+29.96 3480
+30.06 3480
+30.16 3480
+30.26 3480
+30.36 3480
+30.46 3480
+30.56 3480
+30.66 3480
+30.76 3480
+30.86 3480
+30.96 3480
+31.06 3480
+31.16 3480
+31.26 3480
+31.36 3480
+31.46 3480
+31.56 3480
+31.66 3480
+31.76 3480
+31.86 3480
+31.96 3480
+32.06 3480
+32.16 3480
+32.26 3480
+32.36 3480
+32.46 3480
+32.56 3480
+32.66 3480
+32.76 3480
+32.86 3480
+32.96 3480
+33.06 3480
+33.16 3480
+33.26 3480
+33.36 3480
+33.46 3480
+33.56 3480
+33.66 3480
+33.76 3480
+33.86 3480
+33.96 3480
+34.06 3480
+34.16 3480
+34.26 3480
+34.36 3480
+34.46 3480
+34.56 3480
+34.66 3480
+34.76 3480
+34.86 3480
+34.96 3480
+35.06 3480
+35.16 3480
+35.26 3480
+35.36 3480
+35.46 3480
+35.56 3480
+35.66 3480
+35.76 3480
+35.86 3480
+35.96 3480
+36.06 3480
+36.16 3480
+36.26 3480
+36.36 3480
+36.46 3480
+36.56 3480
+36.66 3480
+36.76 3480
+36.86 3480
+36.96 3480
+37.06 3480
+37.16 3480
+37.26 3480
+37.36 3480
+37.46 3480
+37.56 3480
+37.66 3480
+37.76 3480
+37.86 3480
+37.96 3480
+38.06 3480
+38.16 3480
+38.26 3480
+38.36 3480
+38.46 3480
+38.56 3480
+38.66 3480
+38.76 3480
+38.86 3480
+38.96 3480
+39.06 3480
+39.16 3480
+39.26 3480
+39.26 3500
+39.16 3500
+39.06 3500
+38.96 3500
+38.86 3500
+38.76 3500
+38.66 3500
+38.56 3500
+38.46 3500
+38.36 3500
+38.26 3500
+38.16 3500
+38.06 3500
+37.96 3500
+37.86 3500
+37.76 3500
+37.66 3500
+37.56 3500
+37.46 3500
+37.36 3500
+37.26 3500
+37.16 3500
+37.06 3500
+36.96 3500
+36.86 3500
+36.76 3500
+36.66 3500
+36.56 3500
+36.46 3500
+36.36 3500
+36.26 3500
+36.16 3500
+36.06 3500
+35.96 3500
+35.86 3500
+35.76 3500
+35.66 3500
+35.56 3500
+35.46 3500
+35.36 3500
+35.26 3500
+35.16 3500
+35.06 3500
+34.96 3500
+34.86 3500
+34.76 3500
+34.66 3500
+34.56 3500
+34.46 3500
+34.36 3500
+34.26 3500
+34.16 3500
+34.06 3500
+33.96 3500
+33.86 3500
+33.76 3500
+33.66 3500
+33.56 3500
+33.46 3500
+33.36 3500
+33.26 3500
+33.16 3500
+33.06 3500
+32.96 3500
+32.86 3500
+32.76 3500
+32.66 3500
+32.56 3500
+32.46 3500
+32.36 3500
+32.26 3500
+32.16 3500
+32.06 3500
+31.96 3500
+31.86 3500
+31.76 3500
+31.66 3500
+31.56 3500
+31.46 3500
+31.36 3500
+31.26 3500
+31.16 3500
+31.06 3500
+30.96 3500
+30.86 3500
+30.76 3500
+30.66 3500
+30.56 3500
+30.46 3500
+30.36 3500
+30.26 3500
+30.16 3500
+30.06 3500
+29.96 3500
+29.86 3500
+29.76 3500
+29.66 3500
+29.56 3500
+29.46 3500
+29.36 3500
+29.26 3500
+
+> -1 -1
+
+<Polygons_END>
+
+
 
 # b01.
-<PLOTSIZE>            7
-
-
-# Backups for RayPath settings.
-
-ScS =====
--1         -      S
-2891.0     R      S
-0          -      -
-
-ScP =====
--1         -      S
-2891.0     R      P
-0          -      -
-
-S^660S ======
--1         -      S
-3000.0     -      S
-660.0      R      S
-3000.0     -      S
-0          -      -
-
-PKJKP =======
-
--1         -      P
-5149.5     -      S
-6371.0     -      S
-5149.5     -      P
-0          -      -
-
-SKS =======
-
--1         -      S
-2891.0     -      P
-5149.5     -      P
-2891.0     -      S
-0          -      -
-
-ScSScSScS ======
--1         -     S
-2891.0     R     S
-0          R     S
-2891.0     R     S
-0          R     S
-2891.0     R     S
-0          -     -
-
-s^370S ------ set EVDE to 0 (reverse the source and receiver)
--1         -     S
-2891.0     -     S
-370        R     S
-500        -     -
+<PLOTSIZE>            100
+<CenterAt>            34.1146 3480
+                      -- theta/radius. This location will be plotted at the center of the page.
