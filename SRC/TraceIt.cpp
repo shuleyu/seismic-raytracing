@@ -31,9 +31,9 @@ class Ray {
 
 int main(int argc, char **argv){
 
-    enum PIenum{TS,TD,RD,MaximumLegs,FLAG1};
-    enum PSenum{Layers,Depths,Polygons,OutFilePrefix,OutInfoFile,StartWith,FLAG2};
-    enum Penum{TakeOffAngle,EVDE,CriticalAngle,FLAG3};
+    enum PIenum{TS,TD,RD,CalculationStep,FLAG1};
+    enum PSenum{InputRays,Layers,Depths,Polygons,OutFilePrefix,OutInfoFile,FLAG2};
+    enum Penum{CriticalAngle,FLAG3};
 
     /****************************************************************
 
@@ -114,12 +114,8 @@ int main(int argc, char **argv){
 
     ****************************************************************/
 
-	// Calculate ray parameter.
-	const double RE=6371.0;
-	double vsAtSource=Dvs(P[EVDE]),vpAtSource=Dvp(P[EVDE]);
-	double RaypS=M_PI/180*(RE-P[EVDE])*sin(fabs(P[TakeOffAngle])/180*M_PI)/vsAtSource,RaypP=RaypS*vsAtSource/vpAtSource;
-
  	// Set up Layers.
+	const double RE=6371.0;
 	vector<vector<double>> R{vector<double> ()},Vs=R,Vp=R;
 	double prev_depth,depth,inc,next_inc,MinInc;
 
@@ -158,7 +154,7 @@ int main(int argc, char **argv){
 	// PREM is region 0.
 	string tmpstr;
 	double dvp,dvs;
-	vector<pair<double,double>> region;
+	vector<pair<double,double>> region,RegionRMinMax{{0,6371}};
 	vector<vector<pair<double,double>>> Regions{region};
 
 	fpin.open(PS[Polygons]);
@@ -174,22 +170,20 @@ int main(int argc, char **argv){
 				Regions.push_back(region);
 				R.push_back(vector<double> ());
 
-				auto it1=lower_bound(R.begin()->rbegin(),R.begin()->rend(),minr);
-				auto it2=upper_bound(R.begin()->rbegin(),R.begin()->rend(),maxr);
+				auto rit1=lower_bound(R.begin()->rbegin(),R.begin()->rend(),minr);
+				auto rit2=upper_bound(R.begin()->rbegin(),R.begin()->rend(),maxr);
+                auto it1=rit1.base(),it2=rit2.base();
+                if (it1!=R.begin()->end()) it1=next(it1);
+                if (it2!=R.begin()->begin()) it2=prev(it2);
 
-				if (*prev(it2)!=maxr) R.back().push_back(maxr);
-				R.back().insert(R.back().end(),it2.base(),it1.base());
-				MinInc=min(MinInc,R.back()[0]-R.back()[1]);
-				if (*it1!=minr) {
-					MinInc=min(MinInc,R.back().back());
-					R.back().push_back(minr);
-				}
+				R.back().insert(R.back().end(),it2,it1);
+                RegionRMinMax.push_back({minr,maxr});
 
 				Vs.push_back(vector<double> ());
 				Vp.push_back(vector<double> ());
 				for (auto &item:R.back()) {
-					Vs.back().push_back((1.0-dvs/100)*Rvs(item));
-					Vp.back().push_back((1.0-dvp/100)*Rvp(item));
+					Vs.back().push_back((1.0+dvs/100)*Rvs(item));
+					Vp.back().push_back((1.0+dvp/100)*Rvp(item));
 				}
 			}
 			ss >> x >> dvp >> dvs;
@@ -206,30 +200,48 @@ int main(int argc, char **argv){
 	}
 	fpin.close();
 
-cout << R[1][0] << " " << R[1].back() << endl;
+    // Read in first legs.
+	fpin.open(PS[InputRays]);
+	vector<Ray> RayHeads;
 
+    double theta,takeoff;
+    char phase;
+    while (fpin >> theta >> depth >> takeoff >> phase){
+
+        // ray parameter.
+        double rayp=M_PI/180*(RE-depth)*sin(fabs(takeoff)/180*M_PI)/(phase=='P'?Dvp(depth):Dvs(depth));
+        
+        // starts in which region.
+        int rid=0;
+        for (size_t i=1;i<Regions.size();++i) {
+            if (PointInPolygon(Regions[i],make_pair(theta,RE-depth),1)) {
+                rid=i;
+                break;
+            }
+        }
+        RayHeads.push_back(Ray(rid,theta,RE-depth,0,0,takeoff,rayp,phase=='P'));
+    }
+    fpin.close();
 
 	// Start ray tracing.
 
-	vector<Ray> RayHeads;
-	if (PS[StartWith]=="S") RayHeads.push_back(Ray(0,0,RE-P[EVDE],0,0,P[TakeOffAngle],RaypS,false));
-	else {
-		RayHeads.push_back(Ray(0,0,RE-P[EVDE],0,0,P[TakeOffAngle],RaypP,true));
-		if (PS[StartWith]!="P") RayHeads.push_back(Ray(0,0,RE-P[EVDE],0,0,P[TakeOffAngle],RaypS,false));
-	}
-
-	for (int Leg=1;Leg<=PI[MaximumLegs];++Leg){
+    size_t PrevN=0;
+	for (int Leg=1;Leg<=PI[CalculationStep];++Leg){
 
 		size_t N=RayHeads.size();
+        PrevN=N;
 
+        // Marks of trivia rays for delete.
+        vector<size_t> D;
 
 		for (size_t i=0;i<N;++i){
 
 cout << endl;
-cout << "Leg #, RayID#, theta, radius, GoUp, PorS" << endl;
-cout << Leg << " " << i << " " << RayHeads[i].Pt << " " << RayHeads[i].Pr << " " << (RayHeads[i].GoUp()?"Up ":"Down ") <<  (RayHeads[i].IsP?"P ":"S ") << endl;
+cout << "Leg #, RayID#, Region#, theta, radius, GoUp, PorS" << endl;
+cout << Leg << " " << i << " " << RayHeads[i].InRegion << " " << RayHeads[i].Pt << " " << RayHeads[i].Pr << " " << (RayHeads[i].GoUp()?"Up ":"Down ") <<  (RayHeads[i].IsP?"P ":"S ") << endl;
 
 			// Find the begin and end depth for the next leg (among special depths).
+			int CurRegion=RayHeads[i].InRegion;
 			double nextDepth,MinDiff=RE+1;
 			size_t Cloest=0;
 			for (size_t j=0;j<SpecialDepths.size();++j) {
@@ -251,19 +263,32 @@ cout << Leg << " " << i << " " << RayHeads[i].Pt << " " << RayHeads[i].Pr << " "
 			}
 
 			double Top=min(RE-RayHeads[i].Pr,nextDepth),Bot=max(RE-RayHeads[i].Pr,nextDepth);
+            Top=max(Top,RE-RegionRMinMax[CurRegion].second);
+            Bot=min(Bot,RE-RegionRMinMax[CurRegion].first);
 
-cout << "Top/Bot" << endl;
-cout << Top << " " << Bot << endl;
+printf ("Top, Bot: %.16lf %.16lf\n",Top,Bot);
+printf ("Search between: %.16lf %.16lf\n",RE-R[CurRegion][0],RE-R[CurRegion].back());
 
 			// Do ray-tracing.
-			int CurRegion=RayHeads[i].InRegion;
 
 			const auto &v=(RayHeads[i].IsP?Vp:Vs);
 			vector<double> degree;
 			size_t radius;
 			auto ans=RayPath(R[CurRegion],v[CurRegion],RayHeads[i].RayP,Top,Bot,degree,radius,P[CriticalAngle]);
 
-			// Reverse the direction of the new leg if currently going upward.
+if (Leg==2 && i==2) printf("TravelTime: %.15lf\n",ans.first.first);
+if (Leg==3 && i==2) printf("TravelTime: %.15lf\n",ans.first.first);
+if (Leg==4 && i==2) printf("TravelTime: %.15lf\n",ans.first.first);
+
+cout << R[CurRegion].size() << " " << degree.size() << " " << radius << endl;
+
+            // If the new leg is trivia, mark it for deleting.
+            if (degree.size()==1) {
+                D.push_back(i);
+                continue;
+            }
+
+			// Reverse the direction of the next leg if next leg is going upward.
 			if (RayHeads[i].GoUp()) {
 				double totalDist=degree.back();
 				for (auto &item:degree) item=totalDist-item;
@@ -282,9 +307,10 @@ cout << Top << " " << Bot << endl;
 
 				p=make_pair(RayHeads[i].Pt+M2*degree[j],R[CurRegion][rIndex]);
 
-				if (CurRegion && PointInPolygon(Regions[CurRegion],p,-1)) continue;
+				if (CurRegion && PointInPolygon(Regions[CurRegion],p,1)) continue;
 				if (CurRegion) RayEnd=j; // Ray enters PREM.
 
+                // Current ray in PREM, search for the region it enters next.
 				for (size_t k=1;k<Regions.size();++k){ // k=0 means PREM.
 
 					if (PointInPolygon(Regions[k],p,-1)) { // Ray enters another region.
@@ -298,7 +324,9 @@ cout << Top << " " << Bot << endl;
 					break;
 				}
 			}
-printf ("%.16lf\n",R[CurRegion][radius+M1*(RayEnd+1-degree.size())]);
+
+cout << "RayEnd at step: " << RayEnd << " / " << degree.size()  << endl;
+// printf ("Last point radius: %.16lf\n",R[CurRegion][radius+M1*(RayEnd-degree.size())]);
 
 			// Re-calculate travel distance and travel time if the ray enter another region.
 			if (RayEnd!=-1){
@@ -335,61 +363,61 @@ printf ("%.16lf\n",R[CurRegion][radius+M1*(RayEnd+1-degree.size())]);
 			RayHeads[i].TravelTime+=ans.first.first;
 			RayHeads[i].TravelDist+=ans.first.second;
 
-// 			if (CurRegion==NextRegion) {
+            if (!RayHeads[i].GoUp() && ans.second) ts=td=rd=false;
+            if (fabs(RE-R[CurRegion][rIndex])<MinInc) ts=td=false;
+            if ((!RayHeads[i].GoUp() && fabs(RayHeads[i].Pr-3480)<MinInc) || (RayHeads[i].GoUp() && fabs(RayHeads[i].Pr-1221.5)<MinInc)) {
+                ts&=RayHeads[i].IsP;
+                td&=(!RayHeads[i].IsP);
+            }
+            if (!RayHeads[i].GoUp() && RayHeads[i].IsP && fabs(RayHeads[i].Pr-1221.5)<MinInc) rd=false;
+            if (RayHeads[i].GoUp() && RayHeads[i].IsP && fabs(RayHeads[i].Pr-3480)<MinInc) rd=false;
 
-				if (!RayHeads[i].GoUp() && ans.second) ts=td=rd=false;
-				if (fabs(RE-R[CurRegion][rIndex])<MinInc) ts=td=false;
-				if ((!RayHeads[i].GoUp() && fabs(RayHeads[i].Pr-3480)<MinInc) || (RayHeads[i].GoUp() && fabs(RayHeads[i].Pr-1221.5)<MinInc)) {
-					ts&=RayHeads[i].IsP;
-					td&=(!RayHeads[i].IsP);
-				}
-				if (!RayHeads[i].GoUp() && RayHeads[i].IsP && fabs(RayHeads[i].Pr-1221.5)<MinInc) rd=false;
-				if (RayHeads[i].GoUp() && RayHeads[i].IsP && fabs(RayHeads[i].Pr-3480)<MinInc) rd=false;
+            if (ts) {
+                RayHeads.push_back(RayHeads[i]);
+                if (RayHeads[i].GoUp()) RayHeads.back().TakeOffAngle=M2*91;
+                else RayHeads.back().TakeOffAngle=M2;
 
-				if (ts) {
-					RayHeads.push_back(RayHeads[i]);
-					if (RayHeads[i].GoUp()) RayHeads.back().TakeOffAngle=M2*91;
-					else RayHeads.back().TakeOffAngle=M2;
+                if (CurRegion!=NextRegion) {
+                    RayHeads.back().InRegion=NextRegion;
+                }
+            }
 
-					if (CurRegion!=NextRegion) {
-						RayHeads.back().InRegion=NextRegion;
-					}
-				}
+            if (td) {
+                RayHeads.push_back(RayHeads[i]);
+                if (RayHeads[i].GoUp()) RayHeads.back().TakeOffAngle=M2*91;
+                else RayHeads.back().TakeOffAngle=M2;
+                RayHeads.back().IsP=!RayHeads.back().IsP;
 
-				if (td) {
-					RayHeads.push_back(RayHeads[i]);
-					if (RayHeads[i].GoUp()) RayHeads.back().TakeOffAngle=M2*91;
-					else RayHeads.back().TakeOffAngle=M2;
-					RayHeads.back().IsP=!RayHeads.back().IsP;
+                if (CurRegion!=NextRegion) {
+                    RayHeads.back().InRegion=NextRegion;
+                }
+            }
 
-					if (CurRegion!=NextRegion) {
-						RayHeads.back().InRegion=NextRegion;
-					}
-				}
+            if (rd) {
+                RayHeads.push_back(RayHeads[i]);
+                if (RayHeads[i].GoUp()) RayHeads.back().TakeOffAngle=M2;
+                else RayHeads.back().TakeOffAngle=M2*91;
+                RayHeads.back().IsP=!RayHeads.back().IsP;
+            }
 
-				if (rd) {
-					RayHeads.push_back(RayHeads[i]);
-					if (RayHeads[i].GoUp()) RayHeads.back().TakeOffAngle=M2;
-					else RayHeads.back().TakeOffAngle=M2*91;
-					RayHeads.back().IsP=!RayHeads.back().IsP;
-				}
+            // Do RS part.
 
-				// Do RS part.
-
-				if (RayHeads[i].GoUp()) RayHeads[i].TakeOffAngle=M2;
-				else {
-					if (ans.second) RayHeads[i].TakeOffAngle=M2*(180-incidentAngle);
-					else RayHeads[i].TakeOffAngle=M2*91;
-				}
-// 			}
-// 			else {
-
-// 			}
+            if (RayHeads[i].GoUp()) RayHeads[i].TakeOffAngle=M2;
+            else {
+                if (ans.second) RayHeads[i].TakeOffAngle=M2*(180-incidentAngle);
+                else RayHeads[i].TakeOffAngle=M2*91;
+            }
 		}
+
+        // Delete trivia rays.
+        for (auto rit=D.rbegin();rit!=D.rend();++rit) {
+            RayHeads.erase(RayHeads.begin()+*rit);
+            PrevN-=D.size();
+        }
 	}
 
 	ofstream fpout(PS[OutInfoFile]);
-	for (size_t i=0;i<RayHeads.size();++i)
+	for (size_t i=0;i<PrevN;++i)
 		fpout << i+1 << " " << RayHeads[i].TravelTime << " sec. " << RayHeads[i].Pt << " deg. " << RayHeads[i].RayP << " sec/deg. " << RayHeads[i].TravelDist << "km." << endl;
 	fpout.close();
 

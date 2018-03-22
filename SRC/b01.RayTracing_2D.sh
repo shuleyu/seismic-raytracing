@@ -83,9 +83,12 @@ done
 
 
 # plot source.
-psxy ${PROJ} ${REG} -Sa0.2i -Gyellow -N -O -K >> ${OUTFILE} << EOF
-0 `echo "${RE}-${EVDE}" | bc -l`
+while read theta depth a b
+do
+    psxy ${PROJ} ${REG} -Sa0.2i -Gyellow -N -O -K >> ${OUTFILE} << EOF
+${theta} `echo "${RE}-${depth}" | bc -l`
 EOF
+done < ${WORKDIR}/tmpfile_InputRays_${RunNumber}
 
 # plot velocity anomalies.
 psxy ${PROJ} ${REG} ${WORKDIR}/tmpfile_Polygons_${RunNumber} -m -L -W1p,black -O -K  >> ${OUTFILE}
