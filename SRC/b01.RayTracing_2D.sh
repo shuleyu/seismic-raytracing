@@ -28,9 +28,10 @@ ls ${WORKDIR}/${OutFilePrefix}* >/dev/null 2>&1
 [ $? -ne 0 ] && echo "    !=> In `basename $0`: Run a01 first ..." && exit 1
 
 # Plot.
+Rotate=56.5
 OUTFILE=tmp.ps
 RE="6371.0"
-PROJ="-JPa${PLOTSIZE}i/60"
+PROJ="-JPa${PLOTSIZE}i/`echo ${Rotate} | awk '{print 90-$1}'`"
 REG="-R0/360/0/${RE}"
 
 # Move to center.
@@ -38,8 +39,8 @@ psxy ${PROJ} ${REG} -P -K -Xc -Yc > ${OUTFILE} << EOF
 EOF
 
 # Move to CenterAt.
-X=`echo ${PLOTSIZE} ${CenterAt}| awk '{print $3*cos((30+$2)/180*3.1415926)/6371.0/2*$1}'`
-Y=`echo ${PLOTSIZE} ${CenterAt}| awk '{print -$3*sin((30+$2)/180*3.1415926)/6371.0/2*$1}'`
+X=`echo ${PLOTSIZE} ${CenterAt} ${Rotate}| awk '{print $3*cos(($4+$2)/180*3.1415926)/6371.0/2*$1}'`
+Y=`echo ${PLOTSIZE} ${CenterAt} ${Rotate}| awk '{print -$3*sin(($4+$2)/180*3.1415926)/6371.0/2*$1}'`
 psxy -J -R -O -K -X${X}i -Y${Y}i >> ${OUTFILE} << EOF
 EOF
 
@@ -69,29 +70,46 @@ EOF
 # plot ray path.
 for file in `ls ${WORKDIR}/${OutFilePrefix}*`
 do
+    RayNumber=${file##*_}
+    RayColor=`awk -v R=${RayNumber} 'NR==R {print $2}' ${WORKDIR}/${OutInfoFile}`
+
 	grep -n ">" ${file} | awk 'BEGIN {FS=":"} {print $1}' > lines1
 	awk '{print $1-1}' lines1 | awk 'NR>1 {print $0}' > lines2
 	wc -l < ${file} >> lines2
 	paste lines1 lines2 > lines
-	
+
 	while read l1 l2
 	do
-		[ "`awk -v L1=${l1} 'NR==L1 {print $2}' ${file}`" = "P" ] && Pen="-W0.5p,blue" ||  Pen="-W0.5p,red"
+        if [ ${RayColor} = "black" ]
+        then
+            [ "`awk -v L1=${l1} 'NR==L1 {print $2}' ${file}`" = "P" ] && Pen="-W0.5p,blue" ||  Pen="-W0.5p,red"
+        else
+            Pen="-W0.5p,${RayColor}"
+        fi
 		awk -v L1=${l1} -v L2=${l2} '{ if (NR>L1 && NR<=L2) print $0}' ${file} | psxy ${PROJ} ${REG} -m -O -K ${Pen} >> ${OUTFILE}
 	done < lines
 done
 
 
 # plot source.
-while read theta depth a b
+awk '{print $1,$2}' ${WORKDIR}/tmpfile_InputRays_${RunNumber} | sort -u > tmpfile_sources_$$
+while read theta depth
 do
     psxy ${PROJ} ${REG} -Sa0.2i -Gyellow -N -O -K >> ${OUTFILE} << EOF
 ${theta} `echo "${RE}-${depth}" | bc -l`
 EOF
-done < ${WORKDIR}/tmpfile_InputRays_${RunNumber}
+done < tmpfile_sources_$$
 
 # plot velocity anomalies.
-psxy ${PROJ} ${REG} ${WORKDIR}/tmpfile_Polygons_${RunNumber} -m -L -W1p,black -O -K  >> ${OUTFILE}
+for file in `ls ${WORKDIR}/${PolygonOutPrefix}*`
+do
+    psxy ${PROJ} ${REG} ${file} -m -L -W1p,black -O -K  >> ${OUTFILE}
+done
+
+# plot scale at the CMB.
+PROJ2=`echo "${PLOTSIZE} ${Rotate}" | awk '{print "-JPa"$1*3480/6371"i/"90-$2}'`
+MOVE=`echo "${PLOTSIZE}" |  awk '{print $1/2*2891/6371}'`
+psbasemap ${PROJ2} ${REG} -Ba5f1 -X${MOVE}i -Y${MOVE}i -O -K >> ${OUTFILE}
 
 # seal the plot.
 psxy -J -R -O >> ${OUTFILE} << EOF
