@@ -29,11 +29,13 @@
 ## begin position (Theta in deg, Depth in km), TakeOffAngle, "P" or "S", Color (if you put black, the ray will be colored red/blue for S/P legs).
 <InputRays_BEGIN>
 
-0    500     21.00    S    red
-0    500     21.50    S    blue 
-0    500     21.75    S    green
-0    500     22.00    S    purple
-0    500     22.50    S    darkgreen
+0    500     22.50    S    red
+0    500     22.75    S    green
+0    500     23.00    S    blue 
+0    500     23.25    S    gray
+0    500     23.50    S    darkgreen
+0    500     23.75    S    purple
+0    500     24.00    S    cyan
 
 <InputRays_END>
 
@@ -91,17 +93,17 @@
 
 
 > 0 -20
-26.0 2891
-32.0 2891
-32.0 2861
-27.0 2861
+28.658 2891
+34.658 2891
+34.658 2871
+28.658 2871
 
 >
 
 <Polygons_END>
 
 # b01.
-<PLOTSIZE>            250
-<CenterAt>            27 3480
+<PLOTSIZE>            7
+<CenterAt>            31.658 0
                       -- theta/radius. This location will be plotted at the center of the page.
 

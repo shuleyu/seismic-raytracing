@@ -28,10 +28,10 @@ ls ${WORKDIR}/${OutFilePrefix}* >/dev/null 2>&1
 [ $? -ne 0 ] && echo "    !=> In `basename $0`: Run a01 first ..." && exit 1
 
 # Plot.
-Rotate=56.5
+Rotate=`echo ${CenterAt} | awk '{print $1}'`
 OUTFILE=tmp.ps
 RE="6371.0"
-PROJ="-JPa${PLOTSIZE}i/`echo ${Rotate} | awk '{print 90-$1}'`"
+PROJ="-JPa${PLOTSIZE}i/${Rotate}"
 REG="-R0/360/0/${RE}"
 
 # Move to center.
@@ -39,8 +39,8 @@ psxy ${PROJ} ${REG} -P -K -Xc -Yc > ${OUTFILE} << EOF
 EOF
 
 # Move to CenterAt.
-X=`echo ${PLOTSIZE} ${CenterAt} ${Rotate}| awk '{print $3*cos(($4+$2)/180*3.1415926)/6371.0/2*$1}'`
-Y=`echo ${PLOTSIZE} ${CenterAt} ${Rotate}| awk '{print -$3*sin(($4+$2)/180*3.1415926)/6371.0/2*$1}'`
+X=`echo ${PLOTSIZE} ${CenterAt} ${Rotate}| awk '{print $3*cos(((90-$4)+$2)/180*3.1415926)/6371.0/2*$1}'`
+Y=`echo ${PLOTSIZE} ${CenterAt} ${Rotate}| awk '{print -$3*sin(((90-$4)+$2)/180*3.1415926)/6371.0/2*$1}'`
 psxy -J -R -O -K -X${X}i -Y${Y}i >> ${OUTFILE} << EOF
 EOF
 
@@ -107,7 +107,7 @@ do
 done
 
 # plot scale at the CMB.
-PROJ2=`echo "${PLOTSIZE} ${Rotate}" | awk '{print "-JPa"$1*3480/6371"i/"90-$2}'`
+PROJ2=`echo "${PLOTSIZE} ${Rotate}" | awk '{print "-JPa"$1*3480/6371"i/"$2}'`
 MOVE=`echo "${PLOTSIZE}" |  awk '{print $1/2*2891/6371}'`
 psbasemap ${PROJ2} ${REG} -Ba5f1 -X${MOVE}i -Y${MOVE}i -O -K >> ${OUTFILE}
 

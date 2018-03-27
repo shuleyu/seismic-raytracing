@@ -386,7 +386,8 @@ cout << flush;
 cout << "Next Region  (T) :" << NextRegion <<  endl;
 
 			// For rays entering different regions, we need to calculate some new angles/ray parameters.
-            double Incident=0,Rayp_td,Rayp_ts,Rayp_rd,Rayp_rs,NextPt_T,NextPr_T,NextPt_R,NextPr_R,JuncPt,JuncPr;
+            double Incident=0,Rayp_td,Rayp_ts,Rayp_rd,Rayp_rs,NextPt_T,NextPr_T,NextPt_R,NextPr_R,JuncPt,JuncPr,Takeoff_rs;
+                
 			bool ts=(PI[TS]==1),td=(PI[TD]==1),rd=(PI[RD]==1);
 			if (RayEnd!=-1){
 
@@ -507,7 +508,7 @@ printf ("Incident angle :%.15lf deg\n",Incident);
 
 
                 /// D. reflection to a same wave type.
-                double Takeoff_rs=(RayHeads[i].GoUp?Incident:180-Incident);
+                Takeoff_rs=(RayHeads[i].GoUp?Incident:180-Incident);
 printf("TakeOff angle1 (R): %.15lf deg\n",Takeoff_rs);
 printf("Tilt angle     (R): %.15lf deg\n",TiltAngle);
                 if (0<TiltAngle && TiltAngle<90) Takeoff_rs+=M*TiltAngle;
@@ -526,6 +527,7 @@ printf("RayP           (R): %.15lf deg\n",Rayp_rs);
                 NextPr_T=NextPr_R=R[CurRegion][rIndex(RayEnd-1)];
                 Rayp_td=Rayp_ts=Rayp_rd=Rayp_rs=RayHeads[i].RayP;
                 Incident=asin(RayHeads[i].RayP*180/M_PI*v[CurRegion][rIndex(RayEnd-1)]/R[CurRegion][rIndex(RayEnd-1)])*180/M_PI;
+                Takeoff_rs=(RayHeads[i].GoUp?Incident:180-Incident);
 // printf ("Incident angle :%.15lf deg\n",Incident);
             }
 
@@ -595,7 +597,7 @@ printf ("RayEnd at (T)    :%.15lf deg, %.15lf (inclusive) km\n",NextPt_T,RE-Next
 
             // rs
             RayHeads[i].RayP=Rayp_rs;
-            RayHeads[i].GoUp=!RayHeads[i].GoUp;
+            RayHeads[i].GoUp=(fabs(Takeoff_rs)>90);
             RayHeads[i].Pt=NextPt_R;
             RayHeads[i].Pr=NextPr_R;
 
