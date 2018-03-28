@@ -35,7 +35,7 @@ PROJ="-JPa${PLOTSIZE}i/${Rotate}"
 REG="-R0/360/0/${RE}"
 
 # Move to center.
-psxy ${PROJ} ${REG} -P -K -Xc -Yc > ${OUTFILE} << EOF
+psxy ${PROJ} ${REG} -K -Xc -Yc > ${OUTFILE} << EOF
 EOF
 
 # Move to CenterAt.
@@ -45,7 +45,8 @@ psxy -J -R -O -K -X${X}i -Y${Y}i >> ${OUTFILE} << EOF
 EOF
 
 # distance grid.
-psbasemap ${PROJ} ${REG} -Ba10f2 -O -K >> ${OUTFILE}
+[ `echo "${PLOTSIZE}>10" | bc` -eq 1 ] && BAXI="-Ba1f1" || BAXI="-Ba10f1"
+psbasemap ${PROJ} ${REG} ${BAXI} -O -K >> ${OUTFILE}
 
 # plot mantle.
 psxy ${PROJ} ${REG} -Sc${PLOTSIZE}i -G230/230/230 -O -K >> ${OUTFILE} << EOF
@@ -72,6 +73,10 @@ for file in `ls ${WORKDIR}/${OutFilePrefix}*`
 do
     RayNumber=${file##*_}
     RayColor=`grep -w ${RayNumber} ${WORKDIR}/${OutInfoFile} | awk 'NR==1 {print $1}'`
+    if [ ${RayColor} = "black" ]
+    then
+        [ `head -n 1 ${file} | awk '{print $2}'` = "S" ] && RayColor="red" || RayColor="blue"
+    fi
     psxy ${file} ${PROJ} ${REG} -W0.5p,${RayColor} -m -O -K >> ${OUTFILE}
 done
 
@@ -94,7 +99,9 @@ done
 # plot scale at the CMB.
 PROJ2=`echo "${PLOTSIZE} ${Rotate}" | awk '{print "-JPa"$1*3480/6371"i/"$2}'`
 MOVE=`echo "${PLOTSIZE}" |  awk '{print $1/2*2891/6371}'`
-psbasemap ${PROJ2} ${REG} -Ba5f1 -X${MOVE}i -Y${MOVE}i -O -K >> ${OUTFILE}
+gmtset TICK_LENGTH = -0.2c
+gmtset ANNOT_OFFSET_PRIMARY = -0.2c
+psbasemap ${PROJ2} ${REG} ${BAXI} -X${MOVE}i -Y${MOVE}i -O -K >> ${OUTFILE}
 
 # seal the plot.
 psxy -J -R -O >> ${OUTFILE} << EOF

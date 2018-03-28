@@ -44,7 +44,7 @@
                       -- in deg. The criteria for "turning".
 
 
-<CalculationStep>     4
+<CalculationStep>     6
                       -- Calculation limits.
 					  	 Notice the number of rays could increase exponentially ~ O(3^N)
 
@@ -95,15 +95,15 @@
 > 0 -20
 28.658 2891
 34.658 2891
-34.658 2871
-28.658 2871
+33.658 2871
+29.658 2871
 
 >
 
 <Polygons_END>
 
 # b01.
-<PLOTSIZE>            250
-<CenterAt>            31.658 3480
+<PLOTSIZE>            7
+<CenterAt>            31.658 0
                       -- theta/radius. This location will be plotted at the center of the page.
-
+                      -- 31.658
