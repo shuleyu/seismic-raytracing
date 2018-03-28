@@ -10,6 +10,8 @@
 #include<CreateGrid.hpp>
 #include<LineJunction.hpp>
 #include<LocDist.hpp>
+#include<Lon2180.hpp>
+#include<Lon2360.hpp>
 #include<PointInPolygon.hpp>
 #include<PREM.hpp>
 #include<RayPath.hpp>
@@ -19,13 +21,13 @@ using namespace std;
 
 class Ray {
 	public:
-		bool IsP,GoUp,GoLeft;
+		bool IsP,GoUp,GoLeft,Valid;
         string Color;
-		int InRegion;
+		int InRegion,Prev;
 		double Pt,Pr,TravelTime,TravelDist,RayP;
 
-		Ray(bool p, bool g, bool l, string c, int i,double th, double r, double t, double d, double rp) :
-		    IsP(p), GoUp(g), GoLeft(l), Color(c), InRegion(i),Pt(th),Pr(r),TravelTime(t),TravelDist(d), RayP(rp) {}
+		Ray(bool p, bool g, bool l, bool v, string c, int i,double th, double r, double t, double d, double rp) :
+		    IsP(p), GoUp(g), GoLeft(l), Valid(v), Color(c), InRegion(i), Prev(-1), Pt(th),Pr(r),TravelTime(t),TravelDist(d), RayP(rp) {}
 };
 
 int main(int argc, char **argv){
@@ -266,24 +268,22 @@ int main(int argc, char **argv){
         double rayp=M_PI/180*(RE-depth)*sin(fabs(takeoff)/180*M_PI)/(phase=='P'?Dvp(depth)*dV[rid].first:Dvs(depth)*dV[rid].second);
 
         // Record this input ray (into "RayHeads").
-        RayHeads.push_back(Ray(phase=='P',fabs(takeoff)>=90,takeoff<0,color,rid,theta,RE-depth,0,0,rayp));
+        RayHeads.push_back(Ray(phase=='P',fabs(takeoff)>=90,takeoff<0,true,color,rid,theta,RE-depth,0,0,rayp));
     }
     fpin.close();
 
 
 	// Start ray tracing.
-    size_t ValidN=0; // For info output: only output valid rays.
+    size_t QueueL,QueueR=0; // For info output: only output valid rays.
 
-	for (int Leg=1;Leg<=PI[CalculationStep];++Leg){
+	for (int Step=0;Step<PI[CalculationStep];++Step){
 
-		size_t N=RayHeads.size();
-        ValidN=N;
+        QueueL=QueueR;
+        QueueR=RayHeads.size();
 
-        // Indices of trivia rays(no propagation due to past-critical angle, etc.).
-        // delete them when this leg is complete.
-        vector<size_t> D;
+		for (size_t i=QueueL;i<QueueR;++i){ // for each ray head, find next leg.
 
-		for (size_t i=0;i<N;++i){ // for each ray head, find next leg.
+            if (!RayHeads[i].Valid) continue;
 
 			// Find the begin and end depth for the next leg.
 
@@ -311,15 +311,20 @@ int main(int argc, char **argv){
             Top=max(Top,RE-R[CurRegion][0]);
             Bot=min(Bot,RE-R[CurRegion].back());
 
-cout << endl;
-cout << "Leg and RayID : " << Leg << " " << i << endl;
-cout << "In region     : " << RayHeads[i].InRegion << endl;
-printf ("Location      : %.15lf deg, %.15lf km\n", RayHeads[i].Pt, RE-RayHeads[i].Pr);
-cout << "Go up or down : " << (RayHeads[i].GoUp?"Up ":"Down ") << endl;
-cout << "will be P or S: " << (RayHeads[i].IsP?"P ":"S ") << endl;
-printf ("RayHD,TargetD : %.16lf --> %.16lf km\n",RayHeadDepth,NextDepth);
-printf ("SrhTop,SrhBot : %.16lf --> %.16lf km\n",Top,Bot);
+cout << endl << "Calculating   : ";
+int x=i;
+vector<int> xx;
+while (x!=-1) {
+    xx.push_back(x);
+    x=RayHeads[x].Prev;
+}
+for (auto rit=xx.rbegin();rit!=xx.rend();++rit) cout << (1+*rit) << " --> ";
+printf ("\nLocation      : %.15lf deg, %.15lf km (In region: %d)\n", RayHeads[i].Pt, RE-RayHeads[i].Pr,CurRegion);
+cout << "Will go as    : " << (RayHeads[i].IsP?"P, ":"S, ") << (RayHeads[i].GoUp?"Up, ":"Down, ") << (RayHeads[i].GoLeft?"Left":"Right") << endl;
+printf ("Start, End (D): %.16lf --> %.16lf km\n",RayHeadDepth,NextDepth);
+printf ("Actual s/e (D): %.16lf --> %.16lf km\n",Top,Bot);
 printf ("Search between: %.16lf ~ %.16lf km\n",RE-R[CurRegion][0],RE-R[CurRegion].back());
+printf ("...with rayp  : %.16lf sec/deg\n",RayHeads[i].RayP);
 printf ("...\n");
 cout << flush;
 
@@ -330,11 +335,9 @@ cout << flush;
 			vector<double> degree;
 			auto ans=RayPath(R[CurRegion],v[CurRegion],RayHeads[i].RayP,Top,Bot,degree,radius,P[CriticalAngle]);
 
-// cout << RayHeads[i].RayP << endl;
-
             // If the new leg is found to be trivia, mark it for deleting.
             size_t RayLength=degree.size();
-            if (RayLength==1) {D.push_back(i);continue;}
+            if (RayLength==1) {RayHeads[i].Valid=false;continue;}
 
 
 			// Reverse the ray-tracing result of the next leg if next leg is going upward.
@@ -383,13 +386,15 @@ cout << flush;
                 }
 			}
 
-cout << "Next Region  (T) :" << NextRegion <<  endl;
+if (NextRegion==-1) cout << "No region change." <<  endl;
+else cout << "Next Region    (T): " << NextRegion <<  endl;
 
 			// For rays entering different regions, we need to calculate some new angles/ray parameters.
-            double Incident=0,Rayp_td,Rayp_ts,Rayp_rd,Rayp_rs,NextPt_T,NextPr_T,NextPt_R,NextPr_R,JuncPt,JuncPr,Takeoff_rs;
-                
+            double Incident=0,Rayp_td,Rayp_ts,Rayp_rd,Rayp_rs,NextPt_T,NextPr_T,NextPt_R,NextPr_R,JuncPt,JuncPr,Takeoff_ts,Takeoff_rs;
+
 			bool ts=(PI[TS]==1),td=(PI[TD]==1),rd=(PI[RD]==1);
 			if (RayEnd!=-1){
+
 
                 NextPt_R=RayHeads[i].Pt+M*degree[RayEnd-1];
                 NextPr_R=R[CurRegion][rIndex(RayEnd-1)];
@@ -429,6 +434,8 @@ cout << "Next Region  (T) :" << NextRegion <<  endl;
                 JuncPt=junc.second.first;
                 JuncPr=junc.second.second;
                 double TiltAngle=180/M_PI*atan2(q1.second-p1.second,(q1.first-p1.first)*M_PI/180*JuncPr);
+                double Rayd=180/M_PI*atan2(q2.second-p2.second,(q2.first-p2.first)*M_PI/180*JuncPr);
+                double x=Lon2360(Rayd-TiltAngle);
 
 // printf("Juncture at: %.15lf,%.15lf.\n",JuncPt,JuncPr);
 
@@ -462,13 +469,15 @@ cout << "Next Region  (T) :" << NextRegion <<  endl;
                 if (dl2_p>=dl2_q) dx2=dx2_p,dy2=dy2_p,dl2=dl2_p;
                 else dx2=dx2_q,dy2=dy2_q,dl2=dl2_q;
 
-printf("d1: %.15lf,%.15lf.\n",dx1,dy1);
-printf("d2: %.15lf,%.15lf.\n",dx2,dy2);
+// printf("d1: %.15lf,%.15lf.\n",dx1,dy1);
+// printf("d2: %.15lf,%.15lf.\n",dx2,dy2);
                 Incident=180/M_PI*acos((dx1*dx2+dy1*dy2)/dl1/dl2);
                 if (Incident>90) Incident=180-Incident;
                 Incident=90-Incident;
 
-printf ("Incident angle :%.15lf deg\n",Incident);
+printf("Incident angle    : %.15lf deg\n",Incident);
+printf("Ray angle         : %.15lf deg\n",Rayd);
+printf("Tilt angle        : %.15lf deg\n",TiltAngle);
 
                 // Find the new takeoff angle and ray parameter for rays entering another region.
 
@@ -485,8 +494,8 @@ printf ("Incident angle :%.15lf deg\n",Incident);
                     c2=c1/dV[CurRegion].second*dV[NextRegion].second;
                 }
 // printf("c1/c2     : %.15lf,%.15lf\n",c1,c2);
-                double Takeoff_ts=asin(sin(Incident*M_PI/180)*c2/c1)*180/M_PI;
-// printf("TakeOff angle1: %.15lf deg\n",Takeoff_ts);
+                Takeoff_ts=asin(sin(Incident*M_PI/180)*c2/c1)*180/M_PI-Incident;
+// printf("\nTakeOff angle1(TS): %.15lf deg\n",Takeoff_ts);
 
 // printf("RayP before      : %.15lf\n",RayHeads[i].RayP);
 //                         double Rayp_rb=M_PI/180*JuncPr*sin(fabs(Incident)*M_PI/180)/Rvs(JuncPr);
@@ -494,60 +503,51 @@ printf ("Incident angle :%.15lf deg\n",Incident);
 
                 //// take 2D structure shape into consideration.
 
-// printf("Tilt angle    : %.15lf deg\n",TiltAngle);
-                if (0<TiltAngle && TiltAngle<90) Takeoff_ts+=M*TiltAngle;
-                else if (90<=TiltAngle && TiltAngle<=180) Takeoff_ts-=M*(180-TiltAngle);
-                else if (-90<=TiltAngle && TiltAngle<=0) Takeoff_ts+=M*TiltAngle;
-                else Takeoff_ts+=M*(180+TiltAngle);
+                if ((0<x && x<=90) || (180<x && x<=270)) Takeoff_ts=Lon2180(x-Takeoff_ts+TiltAngle+90);
+                else Takeoff_ts=Lon2180(x+Takeoff_ts+TiltAngle+90);
 
                 if (::isnan(Takeoff_ts)) ts=false;
-// printf("TakeOff angle2: %.15lf deg\n",Takeoff_ts);
 // printf("c2            : %.15lf km/sec.\n",c2);
                 Rayp_ts=M_PI/180*NextPr_T*sin(fabs(Takeoff_ts)*M_PI/180)/c2;
-// printf("RayP after       : %.15lf\n",Rayp_ts);
 
 
                 /// D. reflection to a same wave type.
-                Takeoff_rs=(RayHeads[i].GoUp?Incident:180-Incident);
-printf("TakeOff angle1 (R): %.15lf deg\n",Takeoff_rs);
-printf("Tilt angle     (R): %.15lf deg\n",TiltAngle);
-                if (0<TiltAngle && TiltAngle<90) Takeoff_rs+=M*TiltAngle;
-                else if (90<=TiltAngle && TiltAngle<=180) Takeoff_rs-=M*(180-TiltAngle);
-                else if (-90<=TiltAngle && TiltAngle<=0) Takeoff_rs+=M*TiltAngle;
-                else Takeoff_rs+=M*(180+TiltAngle);
-printf("TakeOff angle2 (R): %.15lf deg\n",Takeoff_rs);
+                Takeoff_rs=Lon2180(-x+TiltAngle+90);
                 Rayp_rs=M_PI/180*NextPr_R*sin(fabs(Takeoff_rs)*M_PI/180)/(RayHeads[i].IsP?Vp[CurRegion][rIndex(RayEnd-1)]:Vs[CurRegion][rIndex(RayEnd-1)]);
-printf("RayP           (R): %.15lf deg\n",Rayp_rs);
 
 			}
-            else { // If ray doesn't end pre-maturelly, ray parameters shouldn't change.
+            else { // If ray doesn't end pre-maturelly, ray parameters shouldn't change, angles are dummies.
 				RayEnd=degree.size();
 				NextRegion=CurRegion;
                 NextPt_T=NextPt_R=RayHeads[i].Pt+M*degree[RayEnd-1];
                 NextPr_T=NextPr_R=R[CurRegion][rIndex(RayEnd-1)];
                 Rayp_td=Rayp_ts=Rayp_rd=Rayp_rs=RayHeads[i].RayP;
-                Incident=asin(RayHeads[i].RayP*180/M_PI*v[CurRegion][rIndex(RayEnd-1)]/R[CurRegion][rIndex(RayEnd-1)])*180/M_PI;
-                Takeoff_rs=(RayHeads[i].GoUp?Incident:180-Incident);
-// printf ("Incident angle :%.15lf deg\n",Incident);
+                Takeoff_ts=(RayHeads[i].GoUp?M*91:M);
+                Takeoff_rs=(RayHeads[i].GoUp?M:M*91);
             }
 
-cout << "RayEnd at Index  :" << RayEnd-1 << " (inclusive) / " << RayLength << endl;
-printf ("RayEnd at (R)    :%.15lf deg, %.15lf (inclusive) km\n",NextPt_R,RE-NextPr_R);
-printf ("RayEnd at (T)    :%.15lf deg, %.15lf (inclusive) km\n",NextPt_T,RE-NextPr_T);
+printf("\nTakeOff angle (TS): %.15lf deg\n",Takeoff_ts);
+printf("RayP          (TS): %.15lf\n",Rayp_ts);
+printf("TakeOff angle (RS): %.15lf deg\n",Takeoff_rs);
+printf("RayP          (RS): %.15lf deg\n\n",Rayp_rs);
+
+cout << "\nRayEnd at Index  :" << RayEnd-1 << " (inclusive) / " << RayLength << endl;
+printf ("RayEnd at    (R) :%.15lf deg, %.15lf (inclusive) km\n",NextPt_R,RE-NextPr_R);
+printf ("RayEnd at    (T) :%.15lf deg, %.15lf (inclusive) km\n",NextPt_T,RE-NextPr_T);
+
+
+			// Update current RayHead.
+			RayHeads[i].TravelTime=ans.first.first;
+			RayHeads[i].TravelDist=ans.first.second;
 
 
 			// Output valid part ray paths.
 			ofstream fpout;
 			fpout.open(PS[OutFilePrefix]+to_string(i+1),ofstream::app);
-			fpout << "> " << (RayHeads[i].IsP?"P":"S") << endl;
+			fpout << "> " << (RayHeads[i].IsP?"P":"S") << " " << RayHeads[i].TravelTime << endl;
 			for (int j=0;j<RayEnd;++j)
 				fpout << RayHeads[i].Pt+M*degree[j] << " " << R[CurRegion][rIndex(j)] << '\n';
 			fpout.close();
-
-
-			// Update current RayHead.
-			RayHeads[i].TravelTime+=ans.first.first;
-			RayHeads[i].TravelDist+=ans.first.second;
 
 
             // Add rules of: (t)ransmission/refrection and (r)eflection to (s)ame or (d)ifferent way type.
@@ -575,14 +575,18 @@ printf ("RayEnd at (T)    :%.15lf deg, %.15lf (inclusive) km\n",NextPt_T,RE-Next
             // Add new rays according to the rules decided above.
             if (ts) {
                 RayHeads.push_back(RayHeads[i]);
+                RayHeads.back().Prev=i;
                 RayHeads.back().Pt=NextPt_T;
                 RayHeads.back().Pr=NextPr_T;
                 RayHeads.back().RayP=Rayp_ts;
+                RayHeads.back().GoUp=(fabs(Takeoff_ts)>90);
+                RayHeads.back().GoLeft=(Takeoff_ts<0);
                 RayHeads.back().InRegion=NextRegion;
             }
 
             if (td) {
                 RayHeads.push_back(RayHeads[i]);
+                RayHeads.back().Prev=i;
                 RayHeads.back().IsP=!RayHeads.back().IsP;
                 RayHeads[i].RayP=Rayp_td;
                 RayHeads.back().InRegion=NextRegion;
@@ -590,30 +594,40 @@ printf ("RayEnd at (T)    :%.15lf deg, %.15lf (inclusive) km\n",NextPt_T,RE-Next
 
             if (rd) {
                 RayHeads.push_back(RayHeads[i]);
+                RayHeads.back().Prev=i;
                 RayHeads.back().IsP=!RayHeads.back().IsP;
                 RayHeads[i].RayP=Rayp_rd;
-                RayHeads.back().InRegion=CurRegion;
             }
 
             // rs
-            RayHeads[i].RayP=Rayp_rs;
-            RayHeads[i].GoUp=(fabs(Takeoff_rs)>90);
-            RayHeads[i].Pt=NextPt_R;
-            RayHeads[i].Pr=NextPr_R;
+            RayHeads.push_back(RayHeads[i]);
+            RayHeads.back().Prev=i;
+            RayHeads.back().Pt=NextPt_R;
+            RayHeads.back().Pr=NextPr_R;
+            RayHeads.back().RayP=Rayp_rs;
+            RayHeads.back().GoUp=(fabs(Takeoff_rs)>90);
+            RayHeads.back().GoLeft=(Takeoff_rs<0);
 
 		} // End of ray loop.
-
-        // Delete trivia rays and update number of valid rays.
-        for (auto rit=D.rbegin();rit!=D.rend();++rit)
-            RayHeads.erase(RayHeads.begin()+*rit);
-        ValidN-=D.size();
 
     } // End of leg loop.
 
 	ofstream fpout(PS[OutInfoFile]);
-	for (size_t i=0;i<ValidN;++i)
-		fpout << i+1 << " " << RayHeads[i].Color << " " << RayHeads[i].TravelTime << " sec. " << RayHeads[i].Pt << " deg. "
-              << RayHeads[i].TravelDist << "km." << endl;
+	for (size_t i=QueueL;i<QueueR;++i){
+        if (RayHeads[i].Valid) {
+
+            fpout << RayHeads[i].Color << " ";
+
+            int x=i;
+            vector<int> xx;
+            while (x!=-1) {
+                xx.push_back(x);
+                x=RayHeads[x].Prev;
+            }
+            for (auto rit=xx.rbegin();rit!=xx.rend();++rit) fpout << (1+*rit) << ((*rit)==*xx.begin()?'\n':' ');
+        }
+    }
+
 	fpout.close();
 
 	return 0;

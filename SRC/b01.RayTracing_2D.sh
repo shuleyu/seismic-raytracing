@@ -71,23 +71,8 @@ EOF
 for file in `ls ${WORKDIR}/${OutFilePrefix}*`
 do
     RayNumber=${file##*_}
-    RayColor=`awk -v R=${RayNumber} 'NR==R {print $2}' ${WORKDIR}/${OutInfoFile}`
-
-	grep -n ">" ${file} | awk 'BEGIN {FS=":"} {print $1}' > lines1
-	awk '{print $1-1}' lines1 | awk 'NR>1 {print $0}' > lines2
-	wc -l < ${file} >> lines2
-	paste lines1 lines2 > lines
-
-	while read l1 l2
-	do
-        if [ ${RayColor} = "black" ]
-        then
-            [ "`awk -v L1=${l1} 'NR==L1 {print $2}' ${file}`" = "P" ] && Pen="-W0.5p,blue" ||  Pen="-W0.5p,red"
-        else
-            Pen="-W0.5p,${RayColor}"
-        fi
-		awk -v L1=${l1} -v L2=${l2} '{ if (NR>L1 && NR<=L2) print $0}' ${file} | psxy ${PROJ} ${REG} -m -O -K ${Pen} >> ${OUTFILE}
-	done < lines
+    RayColor=`grep -w ${RayNumber} ${WORKDIR}/${OutInfoFile} | awk 'NR==1 {print $1}'`
+    psxy ${file} ${PROJ} ${REG} -W0.5p,${RayColor} -m -O -K >> ${OUTFILE}
 done
 
 
