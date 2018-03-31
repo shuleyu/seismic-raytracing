@@ -6,6 +6,7 @@
 #include<iterator>
 #include<algorithm>
 #include<iomanip>
+#include<map>
 
 #include<CreateGrid.hpp>
 #include<LineJunction.hpp>
@@ -33,7 +34,7 @@ class Ray {
 int main(int argc, char **argv){
 
     enum PIenum{TS,TD,RD,CalculationStep,FLAG1};
-    enum PSenum{InputRays,Layers,Depths,Polygons,OutFilePrefix,OutInfoFile,PolygonOutPrefix,FLAG2};
+    enum PSenum{InputRays,Layers,Depths,Polygons,OutFilePrefix,OutInfoFile,ReceiverFile,PolygonOutPrefix,FLAG2};
     enum Penum{CriticalAngle,FLAG3};
 
     /****************************************************************
@@ -274,6 +275,8 @@ int main(int argc, char **argv){
 
 
 	// Start ray tracing.
+    double CurPosition=RE+15;
+    map<string,double> Position;
     size_t QueueL,QueueR=0; // For info output: only output valid rays.
 
 	for (int Step=0;Step<PI[CalculationStep];++Step){
@@ -564,6 +567,32 @@ printf ("RayEnd at    (T) :%.15lf deg, %.15lf (inclusive) km\n\n",NextPt_T,RE-Ne
 			for (int j=0;j<RayEnd;++j)
 				fpout << RayHeads[i].Pt+M*degree[j] << " " << R[CurRegion][rIndex(j)] << '\n';
 			fpout.close();
+
+            if (fabs(NextPr_R-RE)<MinInc) { // Ray reaches surface, output receiver info.
+
+                fpout.open(PS[ReceiverFile],ofstream::app);
+
+                fpout << RayHeads[i].Color << " ";
+
+                if (Position.find(RayHeads[i].Color)==Position.end()) {
+                    Position[RayHeads[i].Color]=CurPosition;
+                    CurPosition+=15;
+                }
+                fpout << Position[RayHeads[i].Color] << " " ;
+
+                int x=i;
+                vector<int> xx;
+                while (x!=-1) {
+                    xx.push_back(x);
+                    x=RayHeads[x].Prev;
+                }
+                double tt=0;
+                for (auto rit=xx.rbegin();rit!=xx.rend();++rit) {
+                    tt+=RayHeads[*rit].TravelTime;
+                }
+                fpout << NextPt_R << " deg. " << tt << " sec. " << endl;
+                fpout.close();
+            }
 
 
             // Add rules of: (t)ransmission/refrection and (r)eflection to (s)ame or (d)ifferent way type.

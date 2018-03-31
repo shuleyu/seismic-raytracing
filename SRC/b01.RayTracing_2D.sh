@@ -80,6 +80,17 @@ do
     psxy ${file} ${PROJ} ${REG} -W0.5p,${RayColor} -m -O -K >> ${OUTFILE}
 done
 
+# plot info at surface.
+
+if [ `echo "${PLOTSIZE}>10" | bc` -eq 1 ]
+then
+    while read color P dist deg tt sec
+    do
+        pstext ${PROJ} ${REG} -W${color} -N -O -K >> ${OUTFILE} << EOF
+${dist} ${P} 15 0 0 LB ${dist} deg. ${tt} sec.
+EOF
+    done < ${WORKDIR}/${ReceiverFile}
+fi
 
 # plot source.
 awk '{print $1,$2}' ${WORKDIR}/tmpfile_InputRays_${RunNumber} | sort -u > tmpfile_sources_$$

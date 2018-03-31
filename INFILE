@@ -13,6 +13,7 @@
 
 <OutFilePrefix>       Ray_
 <PolygonOutPrefix>    Polygon_
+<ReceiverFile>        Receivers.txt
 <OutInfoFile>         Info.txt
 
 ## reflection/transmission(refraction) switches.
@@ -29,13 +30,10 @@
 ## begin position (Theta in deg, Depth in km), TakeOffAngle, "P" or "S", Color (if you put black, the ray will be colored red/blue for S/P legs).
 <InputRays_BEGIN>
 
-0    500     22.50    S    red
-0    500     22.75    S    green
-0    500     23.00    S    blue 
-0    500     23.25    S    gray
-0    500     23.50    S    darkgreen
-0    500     23.75    S    purple
-0    500     24.00    S    cyan
+0    500     22.72   S    red
+0    500     22.94   S    green
+0    500     23.07   S    blue
+0    500     23.20   S    purple
 
 <InputRays_END>
 
@@ -92,18 +90,18 @@
 <Polygons_BEGIN>
 
 
-> 0 -20
-28.658 2891
-34.658 2891
-33.658 2871
-29.658 2871
+> 0 -30
+25 2861
+38 2861
+38 2831
+25 2831
 
 >
 
 <Polygons_END>
 
 # b01.
-<PLOTSIZE>            7
-<CenterAt>            31.658 0
+<PLOTSIZE>            250
+<CenterAt>            31 3480
                       -- theta/radius. This location will be plotted at the center of the page.
                       -- 31.658

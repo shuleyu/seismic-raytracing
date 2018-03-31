@@ -9,7 +9,7 @@
 
 echo ""
 echo "--> `basename $0` is running."
-rm -f ${WORKDIR}/${OutFilePrefix}*
+rm -f ${WORKDIR}/${OutFilePrefix}* ${WORKDIR}/${ReceiverFile}
 trap "rm -f ${WORKDIR}/tmpfile*$$ ${WORKDIR}/*_${RunNumber}; exit 1" SIGINT
 
 # ==============================================
@@ -17,7 +17,7 @@ trap "rm -f ${WORKDIR}/tmpfile*$$ ${WORKDIR}/*_${RunNumber}; exit 1" SIGINT
 # ==============================================
 
 # C++ code.
-${EXECDIR}/TraceIt.out 4 7 1 << EOF
+${EXECDIR}/TraceIt.out 4 8 1 << EOF
 ${TS}
 ${TD}
 ${RD}
@@ -28,6 +28,7 @@ ${WORKDIR}/tmpfile_KeyDepths_${RunNumber}
 ${WORKDIR}/tmpfile_Polygons_${RunNumber}
 ${WORKDIR}/${OutFilePrefix}
 ${WORKDIR}/${OutInfoFile}
+${WORKDIR}/${ReceiverFile}
 ${WORKDIR}/${PolygonOutPrefix}
 ${CriticalAngle}
 EOF
