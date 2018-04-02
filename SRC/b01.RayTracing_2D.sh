@@ -26,101 +26,109 @@ gmtset LABEL_OFFSET = 0.05c
 # Check Calculation
 ls ${WORKDIR}/${OutFilePrefix}* >/dev/null 2>&1
 [ $? -ne 0 ] && echo "    !=> In `basename $0`: Run a01 first ..." && exit 1
+RE="6371.0"
 
 # Plot.
-Rotate=`echo ${CenterAt} | awk '{print $1}'`
-OUTFILE=tmp.ps
-RE="6371.0"
-PROJ="-JPa${PLOTSIZE}i/${Rotate}"
-REG="-R0/360/0/${RE}"
-
-# Move to center.
-psxy ${PROJ} ${REG} -K -Xc -Yc > ${OUTFILE} << EOF
-EOF
-
-# Move to CenterAt.
-X=`echo ${PLOTSIZE} ${CenterAt} ${Rotate}| awk '{print $3*cos(((90-$4)+$2)/180*3.1415926)/6371.0/2*$1}'`
-Y=`echo ${PLOTSIZE} ${CenterAt} ${Rotate}| awk '{print -$3*sin(((90-$4)+$2)/180*3.1415926)/6371.0/2*$1}'`
-psxy -J -R -O -K -X${X}i -Y${Y}i >> ${OUTFILE} << EOF
-EOF
-
-# distance grid.
-[ `echo "${PLOTSIZE}>10" | bc` -eq 1 ] && BAXI="-Ba1f1" || BAXI="-Ba10f1"
-psbasemap ${PROJ} ${REG} ${BAXI} -O -K >> ${OUTFILE}
-
-# plot mantle.
-psxy ${PROJ} ${REG} -Sc${PLOTSIZE}i -G230/230/230 -O -K >> ${OUTFILE} << EOF
-0 0
-EOF
-
-# plot transition zone.
-psxy ${PROJ} ${REG} -Sc`echo "${PLOTSIZE}/${RE}*(${RE}-660/2-410/2)"| bc -l`i -W`echo "${PLOTSIZE}/${RE}*(660-410)/2" |bc -l`i,200/200/200 -O -K >> ${OUTFILE} << EOF
-0 0
-EOF
-
-# plot outter core.
-psxy ${PROJ} ${REG} -Sc`echo "${PLOTSIZE}/${RE}*3480.0"| bc -l`i -G170/170/170 -O -K >> ${OUTFILE} << EOF
-0 0
-EOF
-
-# plot inner core.
-psxy ${PROJ} ${REG} -Sc`echo "${PLOTSIZE}/${RE}*1221.5"| bc -l`i -G140/140/140 -O -K >> ${OUTFILE} << EOF
-0 0
-EOF
-
-# plot ray path.
-for file in `ls ${WORKDIR}/${OutFilePrefix}*`
+Cnt=0
+while read PLOTSIZE Theta Radius
 do
-    RayNumber=${file##*_}
-    RayColor=`grep -w ${RayNumber} ${WORKDIR}/${OutInfoFile} | awk 'NR==1 {print $1}'`
-    if [ ${RayColor} = "black" ]
-    then
-        [ `head -n 1 ${file} | awk '{print $2}'` = "S" ] && RayColor="red" || RayColor="blue"
-    fi
-    psxy ${file} ${PROJ} ${REG} -W0.5p,${RayColor} -m -O -K >> ${OUTFILE}
-done
+    Cnt=$((Cnt+1))
+    OUTFILE=${Cnt}.ps
 
-# plot info at surface.
+    PROJ="-JPa${PLOTSIZE}i/${Theta}"
+    REG="-R0/360/0/${RE}"
 
-if [ `echo "${PLOTSIZE}>10" | bc` -eq 1 ]
-then
-    while read color P dist deg tt sec
+    # Move to center.
+    psxy ${PROJ} ${REG} -K -Xc -Yc > ${OUTFILE} << EOF
+EOF
+
+    # Move to the plot point.
+    Y=`echo ${PLOTSIZE} ${Theta} ${Radius} ${RE}| awk '{print ($3-$4)/$4/2*$1}'`
+    psxy -J -R -O -K -Y${Y}i >> ${OUTFILE} << EOF
+EOF
+
+    # distance grid.
+    [ `echo "${PLOTSIZE}>10" | bc` -eq 1 ] && BAXI="-Ba1f1" || BAXI="-Ba10f1"
+    gmtset TICK_LENGTH = 0.2c
+    gmtset ANNOT_OFFSET_PRIMARY = 0.2c
+    psbasemap ${PROJ} ${REG} ${BAXI} -O -K >> ${OUTFILE}
+
+    # plot mantle.
+    psxy ${PROJ} ${REG} -Sc${PLOTSIZE}i -G230/230/230 -O -K >> ${OUTFILE} << EOF
+0 0
+EOF
+
+    # plot transition zone.
+    psxy ${PROJ} ${REG} -Sc`echo "${PLOTSIZE}/${RE}*(${RE}-660/2-410/2)"| bc -l`i -W`echo "${PLOTSIZE}/${RE}*(660-410)/2" |bc -l`i,200/200/200 -O -K >> ${OUTFILE} << EOF
+0 0
+EOF
+
+    # plot outter core.
+    psxy ${PROJ} ${REG} -Sc`echo "${PLOTSIZE}/${RE}*3480.0"| bc -l`i -G170/170/170 -O -K >> ${OUTFILE} << EOF
+0 0
+EOF
+
+    # plot inner core.
+    psxy ${PROJ} ${REG} -Sc`echo "${PLOTSIZE}/${RE}*1221.5"| bc -l`i -G140/140/140 -O -K >> ${OUTFILE} << EOF
+0 0
+EOF
+
+    # plot ray path.
+    for file in `ls ${WORKDIR}/${OutFilePrefix}*`
     do
-        pstext ${PROJ} ${REG} -W${color} -N -O -K >> ${OUTFILE} << EOF
-${dist} ${P} 15 0 0 LB ${dist} deg. ${tt} sec.
-EOF
-    done < ${WORKDIR}/${ReceiverFile}
-fi
+        RayNumber=${file##*_}
+        RayColor=`grep -w ${RayNumber} ${WORKDIR}/${OutInfoFile} | awk 'NR==1 {print $1}'`
+        if [ ${RayColor} = "black" ]
+        then
+            [ `head -n 1 ${file} | awk '{print $2}'` = "S" ] && RayColor="red" || RayColor="blue"
+        fi
+        psxy ${file} ${PROJ} ${REG} -W0.5p,${RayColor} -m -O -K >> ${OUTFILE}
+    done
 
-# plot source.
-awk '{print $1,$2}' ${WORKDIR}/tmpfile_InputRays_${RunNumber} | sort -u > tmpfile_sources_$$
-while read theta depth
-do
-    psxy ${PROJ} ${REG} -Sa0.2i -Gyellow -N -O -K >> ${OUTFILE} << EOF
+    # plot info at surface.
+
+    if [ `echo "${PLOTSIZE}>10" | bc` -eq 1 ]
+    then
+        while read color z dist deg tt sec
+        do
+            pstext ${PROJ} ${REG} -N -O -K >> ${OUTFILE} << EOF
+${dist} `echo ${PLOTSIZE} ${RE} ${z} | awk '{print $2+$2*2/$1*$3*0.5}'` 15 0 0 LB @;${color};${dist} deg. ${tt} sec.@;;
+EOF
+        done < ${WORKDIR}/${ReceiverFile}
+    fi
+
+    # plot source.
+    awk '{print $1,$2}' ${WORKDIR}/tmpfile_InputRays_${RunNumber} | sort -u > tmpfile_sources_$$
+    while read theta depth
+    do
+        psxy ${PROJ} ${REG} -Sa0.2i -Gyellow -N -O -K >> ${OUTFILE} << EOF
 ${theta} `echo "${RE}-${depth}" | bc -l`
 EOF
-done < tmpfile_sources_$$
+    done < tmpfile_sources_$$
 
-# plot velocity anomalies.
-for file in `ls ${WORKDIR}/${PolygonOutPrefix}*`
-do
-    psxy ${PROJ} ${REG} ${file} -m -L -W1p,black -O -K  >> ${OUTFILE}
-done
+    # plot velocity anomalies.
+    for file in `ls ${WORKDIR}/${PolygonOutPrefix}* 2>/dev/null`
+    do
+        psxy ${PROJ} ${REG} ${file} -m -L -W1p,black -O -K  >> ${OUTFILE}
+    done
 
-# plot scale at the CMB.
-PROJ2=`echo "${PLOTSIZE} ${Rotate}" | awk '{print "-JPa"$1*3480/6371"i/"$2}'`
-MOVE=`echo "${PLOTSIZE}" |  awk '{print $1/2*2891/6371}'`
-gmtset TICK_LENGTH = -0.2c
-gmtset ANNOT_OFFSET_PRIMARY = -0.2c
-psbasemap ${PROJ2} ${REG} ${BAXI} -X${MOVE}i -Y${MOVE}i -O -K >> ${OUTFILE}
+    # plot basemap at the CMB.
+    PROJ2=`echo "${PLOTSIZE} ${Theta} ${RE}" | awk '{print "-JPa"$1*3480/$3"i/"$2}'`
+    MOVE=`echo "${PLOTSIZE} ${RE}" |  awk '{print $1/2*2891/$2}'`
+    gmtset TICK_LENGTH = -0.2c
+    gmtset ANNOT_OFFSET_PRIMARY = -0.2c
+    psbasemap ${PROJ2} ${REG} ${BAXI} -X${MOVE}i -Y${MOVE}i -O -K >> ${OUTFILE}
 
-# seal the plot.
-psxy -J -R -O >> ${OUTFILE} << EOF
+    # seal the plot.
+    psxy -J -R -O >> ${OUTFILE} << EOF
 EOF
+
+done < ${WORKDIR}/tmpfile_PlotWhere_${RunNumber} # done plot position loop.
 
 # Make PDF.
 Title=`basename $0`
-ps2pdf tmp.ps ${PLOTDIR}/${Title%.sh}.pdf
+cat `ls -rt *ps` > ${PLOTDIR}/${Title%.sh}.ps
+ps2pdf ${PLOTDIR}/${Title%.sh}.ps ${PLOTDIR}/${Title%.sh}.pdf
 tomini ${PLOTDIR}/${Title%.sh}.pdf
 
 exit 0

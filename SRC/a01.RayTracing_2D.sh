@@ -9,7 +9,7 @@
 
 echo ""
 echo "--> `basename $0` is running."
-rm -f ${WORKDIR}/${OutFilePrefix}* ${WORKDIR}/${ReceiverFile}
+rm -f ${WORKDIR}/${OutFilePrefix}* ${WORKDIR}/${ReceiverFile} ${WORKDIR}/${PolygonOutPrefix}*
 trap "rm -f ${WORKDIR}/tmpfile*$$ ${WORKDIR}/*_${RunNumber}; exit 1" SIGINT
 
 # ==============================================

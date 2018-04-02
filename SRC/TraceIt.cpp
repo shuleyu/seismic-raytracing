@@ -173,6 +173,8 @@ int main(int argc, char **argv){
 	fpin.open(PS[Polygons]);
 	while (getline(fpin,tmpstr)){
 
+        if (tmpstr.empty()) continue;
+
 		char x;
 		stringstream ss(tmpstr);
 		double theta,d,r,minr,maxr;
@@ -275,7 +277,7 @@ int main(int argc, char **argv){
 
 
 	// Start ray tracing.
-    double CurPosition=RE+15;
+    double CurPosition=1;
     map<string,double> Position;
     size_t QueueL,QueueR=0; // For info output: only output valid rays.
 
@@ -339,7 +341,17 @@ cout << flush;
 
             // If the new leg is found to be trivia, mark it as invalid.
             size_t RayLength=degree.size();
-            if (RayLength==1) {RayHeads[i].Valid=false;continue;}
+            if (RayLength==1) {
+                RayHeads[i].Valid=false;
+                continue;
+            }
+
+            // If the new leg is a reflection from S(going downward) to P(going upward), and the new leg turns, also mark it as invalid.
+            int PrevID=RayHeads[i].Prev;
+            if (PrevID!=-1 && !RayHeads[PrevID].GoUp && !RayHeads[PrevID].IsP && RayHeads[i].GoUp && RayHeads[i].IsP && ans.second) {
+                RayHeads[i].Valid=false;
+                continue;
+            }
 
 
 			// Reverse the ray-tracing result of the next leg if next leg is going upward.
@@ -370,8 +382,8 @@ cout << flush;
                     // Current ray already in some polygon ...
                     if (PointInPolygon(Regions[CurRegion],p)) continue; // ... and stays in that polygon.
                     else { // ... but enters PREM.
-                        NextRegion=0;
                         RayEnd=j;
+                        NextRegion=0;
                         break;
                     }
                 }
@@ -516,7 +528,7 @@ printf("Tilt angle        : %.15lf deg\n",TiltAngle);
                 double x=Lon2360(-Rayd_Hor);
                 if ((0<x && x<=90) || (180<x && x<=270)) Takeoff_rd=Lon2180(x-Takeoff_rd+TiltAngle+90);
                 else Takeoff_rd=Lon2180(x+Takeoff_rd+TiltAngle+90);
-                Rayp_td=M_PI/180*NextPr_R*sin(fabs(Takeoff_rd)*M_PI/180)/c2;
+                Rayp_rd=M_PI/180*NextPr_R*sin(fabs(Takeoff_rd)*M_PI/180)/c2;
 
 
                 /// D. reflection to a same wave type.
@@ -533,11 +545,16 @@ printf("Tilt angle        : %.15lf deg\n",TiltAngle);
                 // ray parameters shouldn't change.
                 Rayp_td=Rayp_ts=Rayp_rd=Rayp_rs=RayHeads[i].RayP;
 
+                // Calculate incident angles.
+                Incident=180/M_PI*asin(RayHeads[i].RayP*v[CurRegion][rIndex(RayEnd-1)]*180/M_PI/R[CurRegion][rIndex(RayEnd-1)]);
+
                 // angles are dummies.
-                Takeoff_ts=(RayHeads[i].GoUp?M*91:M);
+                Takeoff_ts=sin(Incident/180*M_PI)/v[CurRegion][rIndex(RayEnd-1)]
                 Takeoff_td=Takeoff_ts;
                 Takeoff_rd=(RayHeads[i].GoUp?M:M*91);
                 Takeoff_rs=Takeoff_rd;
+//                 Takeoff_rs=(RayHeads[i].GoUp?:90+Incident);
+
 
             } // End of dealing with rays entering another region.
 
@@ -575,8 +592,7 @@ printf ("RayEnd at    (T) :%.15lf deg, %.15lf (inclusive) km\n\n",NextPt_T,RE-Ne
                 fpout << RayHeads[i].Color << " ";
 
                 if (Position.find(RayHeads[i].Color)==Position.end()) {
-                    Position[RayHeads[i].Color]=CurPosition;
-                    CurPosition+=15;
+                    Position[RayHeads[i].Color]=CurPosition++;
                 }
                 fpout << Position[RayHeads[i].Color] << " " ;
 

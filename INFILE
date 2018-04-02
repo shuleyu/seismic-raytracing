@@ -6,8 +6,6 @@
 <WORKDIR>             /home/shule/PROJ/t058.RayTracing_2D
 <BASHCODEDIR>         /home/shule/Research/Fun.Bash.c001
 <CPPCODEDIR>          /home/shule/Research/Fun.C++.c003
-<CPPCOMP>             c++
-<CPPFLAG>             -std=c++14 -Wall
 
 # a01.
 
@@ -19,21 +17,23 @@
 ## reflection/transmission(refraction) switches.
 <TS>                  1
 <TD>                  0
-<RD>                  0
-					  -- For clearance, supress unwanted rays.
-					  TD: transmission, Difference wave-type (if possible).
-					  TS: transmission, Same wave-type (if possible).
-					  RD: reflection, Different wave-type wave-type (if possible).
-					  RS: reflection, same wave-type. Notice this is always possible, so the code always do this (to avoid halting)
+<RD>                  1
+                      -- For clearance, supress unwanted rays.
+                      TD: transmission, Difference wave-type (if possible).
+                      TS: transmission, Same wave-type (if possible).
+                      RD: reflection, Different wave-type wave-type (if possible).
+                      RS: reflection, same wave-type. Notice this is always possible, so the code always do this (to avoid halting)
 
 
-## begin position (Theta in deg, Depth in km), TakeOffAngle, "P" or "S", Color (if you put black, the ray will be colored red/blue for S/P legs).
+## Begin position.
+##
+## 5 columns:
+## Theta (deg)   |   Depth (km)   |    TakeOffAngle (deg)   |    "P" or "S"    |     Color (using black here for red(P) and blue(S)).
 <InputRays_BEGIN>
 
-0    500     22.72   S    red
-0    500     22.94   S    green
-0    500     23.07   S    blue
-0    500     23.20   S    purple
+0    500    12.00    S    black
+0    500    13.00    S    black
+0    500    14.00    S    black
 
 <InputRays_END>
 
@@ -42,18 +42,21 @@
                       -- in deg. The criteria for "turning".
 
 
-<CalculationStep>     6
+<CalculationStep>     2
                       -- Calculation limits.
-					  	 Notice the number of rays could increase exponentially ~ O(3^N)
+                         Notice the number of rays could increase exponentially ~ O(3^N)
 
 
 
 
 
 ## Layer settings (in km).
-## Will mesh a velocity grid using these parameters.
-## DepthN, Interval. Interval gives layer increment between DepthN and DepthN+1).
-## -1 is a placeholder.
+## Will create velocity grid using these parameters.
+## Interval gives layer increment between Depth_N and Depth_{N+1}.
+## -1 at the last line is a placeholder with no meaning.
+##
+## 2 columns:
+## Depth_N (km)  |  Interval (km)
 <LayerSetting_BEGIN>
 
 0          0.1
@@ -67,10 +70,14 @@
 <LayerSetting_END>
 
 ## RayPath settings.
-## Will do both reflection/transmission to both P/S at these depths.
+## Will do reflection,transmission at these depths.
+##
+## 1 column:
+## depths (km).
 <KeyDepths_BEGIN>
 
 0
+1800
 2891
 5149.5
 6371.0
@@ -78,30 +85,41 @@
 <KeyDepths_END>
 
 ## Region settings.
+## Specify 2D features. dVp/dVs is compared to PREM at these depths.
+##
 ## > dVp1 dVs1 (in %)
-## theta,radius
+## theta,depth
 ## ...
 ##
 ## > dVp2 dVs2
-## theta,radius
+## theta,depth
 ## ...
 ##
-## >  !!! Seal this section with a ">" !!!
+## >  !!! Seal this section with a ">" (the last region is not used) !!!
 <Polygons_BEGIN>
 
 
 > 0 -30
-25 2861
-38 2861
-38 2831
-25 2831
+8 2861
+15 2861
+15 2831
+8 2831
 
 >
 
 <Polygons_END>
 
 # b01.
-<PLOTSIZE>            250
-<CenterAt>            31 3480
-                      -- theta/radius. This location will be plotted at the center of the page.
-                      -- 31.658
+
+## Plot size and centering settings.
+## These locations will be plotted at the center of the page.
+##
+## 3 columns:
+## plotsize (inches at diameter of the earth)  |  theta (in deg)   |   depth(km)
+<PlotWhere_BEGIN>
+
+7      13    6371
+250    12    2891
+100    60    0
+
+<PlotWhere_END>

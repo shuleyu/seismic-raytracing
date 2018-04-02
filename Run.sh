@@ -83,73 +83,21 @@ mkdir -p ${EXECDIR}
 mkdir -p ${PLOTDIR}
 
 #============================================
-#            ! Test Dependencies !
-#============================================
-CommandList=""
-for Command in ${CommandList}
-do
-    command -v ${Command} >/dev/null 2>&1 || { echo >&2 "Command ${Command} is not found. Exiting ... "; exit 1; }
-done
-
-#============================================
 #            ! Compile !
 #============================================
+trap "rm -f ${WORKDIR}/*_$$; exit 1" SIGINT
 
-if [ $# -ne 0 ]
-then
+cd ${CPPCODEDIR}
+make
+[ $? -ne 0 ] && rm -f ${WORKDIR}/*_$$ && exit 1
 
-	trap "rm -f ${EXECDIR}/*.o ${WORKDIR}/*_$$; exit 1" SIGINT
-
-	INCLUDEDIR="-I${CPPCODEDIR}"
-	LIBRARYDIR="-L${CPPCODEDIR} -L."
-	LIBRARIES="-lASU_tools_cpp -lm"
-
-	# ASU_tools Functions.
-	cd ${CPPCODEDIR}
-	make
-	cd ${EXECDIR}
-
-	# Customized Functions (C++).
-	for code in `ls ${SRCDIR}/*fun.cpp 2>/dev/null`
-	do
-		name=`basename ${code}`
-		name=${name%.fun.cpp}
-
-		${CPPCOMP} ${CPPFLAG} -c ${code} ${INCLUDEDIR}
-
-		if [ $? -ne 0 ]
-		then
-			echo "${name} C++ function is not compiled ..."
-			rm -f ${EXECDIR}/*.o ${WORKDIR}/*_$$
-			exit 1
-		fi
-	done
-
-	# Executables (C++).
-	for code in `ls ${SRCDIR}/*.cpp 2>/dev/null | grep -v fun.cpp`
-	do
-		name=`basename ${code}`
-		name=${name%.cpp}
-
-		${CPPCOMP} ${CPPFLAG} -o ${EXECDIR}/${name}.out ${code} ${INCLUDEDIR} ${LIBRARYDIR} ${LIBRARIES}
-
-		if [ $? -ne 0 ]
-		then
-			echo "${name} C++ code is not compiled ..."
-			rm -f ${EXECDIR}/*.o ${WORKDIR}/*_$$
-			exit 1
-		fi
-	done
-
-	# Clean up.
-	rm -f ${EXECDIR}/*fun.o
-
-fi
+cd ${SRCDIR}
+make OUTDIR=${EXECDIR} CPPDIR=${CPPCODEDIR}
+[ $? -ne 0 ] && rm -f ${WORKDIR}/*_$$ && exit 1
 
 # ==============================================
 #           ! Work Begin !
 # ==============================================
-
 cd ${WORKDIR}
 cat >> ${WORKDIR}/stdout << EOF
 
