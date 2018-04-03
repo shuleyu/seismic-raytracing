@@ -17,7 +17,8 @@ trap "rm -f ${WORKDIR}/tmpfile*$$ ${WORKDIR}/*_${RunNumber}; exit 1" SIGINT
 # ==============================================
 
 # C++ code.
-${EXECDIR}/TraceIt.out 4 8 1 << EOF
+${EXECDIR}/TraceIt.out 5 8 1 << EOF
+${DebugInfo}
 ${TS}
 ${TD}
 ${RD}

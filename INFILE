@@ -9,6 +9,8 @@
 
 # a01.
 
+<DebugInfo>           0
+                      -- "0" or "1", calculation progress will be written to ${WORKDIR}/stdout.
 <OutFilePrefix>       Ray_
 <PolygonOutPrefix>    Polygon_
 <ReceiverFile>        Receivers.txt
@@ -16,7 +18,7 @@
 
 ## reflection/transmission(refraction) switches.
 <TS>                  1
-<TD>                  0
+<TD>                  1
 <RD>                  1
                       -- For clearance, supress unwanted rays.
                       TD: transmission, Difference wave-type (if possible).
@@ -31,9 +33,9 @@
 ## Theta (deg)   |   Depth (km)   |    TakeOffAngle (deg)   |    "P" or "S"    |     Color (using black here for red(P) and blue(S)).
 <InputRays_BEGIN>
 
-0    500    12.00    S    black
-0    500    13.00    S    black
-0    500    14.00    S    black
+0    500    12.00    S    red
+0    500    13.00    S    darkgreen
+0    500    14.00    S    blue
 
 <InputRays_END>
 
@@ -42,7 +44,7 @@
                       -- in deg. The criteria for "turning".
 
 
-<CalculationStep>     2
+<CalculationStep>     5
                       -- Calculation limits.
                          Notice the number of rays could increase exponentially ~ O(3^N)
 
@@ -77,7 +79,6 @@
 <KeyDepths_BEGIN>
 
 0
-1800
 2891
 5149.5
 6371.0
