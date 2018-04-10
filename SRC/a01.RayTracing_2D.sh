@@ -9,7 +9,7 @@
 
 echo ""
 echo "--> `basename $0` is running."
-rm -f ${WORKDIR}/${OutFilePrefix}* ${WORKDIR}/${ReceiverFile} ${WORKDIR}/${PolygonOutPrefix}*
+rm -f ${WORKDIR}/${OutFilePrefix}* ${WORKDIR}/${PolygonOutPrefix}*
 trap "rm -f ${WORKDIR}/tmpfile*$$ ${WORKDIR}/*_${RunNumber}; exit 1" SIGINT
 
 # ==============================================
@@ -17,18 +17,17 @@ trap "rm -f ${WORKDIR}/tmpfile*$$ ${WORKDIR}/*_${RunNumber}; exit 1" SIGINT
 # ==============================================
 
 # C++ code.
-${EXECDIR}/TraceIt.out 5 8 1 << EOF
+${EXECDIR}/TraceIt.out 4 8 1 << EOF
 ${DebugInfo}
 ${TS}
 ${TD}
 ${RD}
-${CalculationStep}
 ${WORKDIR}/tmpfile_InputRays_${RunNumber}
 ${WORKDIR}/tmpfile_LayerSetting_${RunNumber}
 ${WORKDIR}/tmpfile_KeyDepths_${RunNumber}
+${WORKDIR}/tmpfile_1DRef_${RunNumber}
 ${WORKDIR}/tmpfile_Polygons_${RunNumber}
 ${WORKDIR}/${OutFilePrefix}
-${WORKDIR}/${OutInfoFile}
 ${WORKDIR}/${ReceiverFile}
 ${WORKDIR}/${PolygonOutPrefix}
 ${CriticalAngle}

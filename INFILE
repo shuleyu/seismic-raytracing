@@ -14,7 +14,6 @@
 <OutFilePrefix>       Ray_
 <PolygonOutPrefix>    Polygon_
 <ReceiverFile>        Receivers.txt
-<OutInfoFile>         Info.txt
 
 ## reflection/transmission(refraction) switches.
 <TS>                  1
@@ -27,28 +26,21 @@
                       RS: reflection, same wave-type. Notice this is always possible, so the code always do this (to avoid halting)
 
 
-## Begin position.
+## Ray settings.
+## using "black" in Coloring resulting in plotting P as red and S as blue.
 ##
 ## 5 columns:
-## Theta (deg)   |   Depth (km)   |    TakeOffAngle (deg)   |    "P" or "S"    |     Color (using black here for red(P) and blue(S)).
+##
+## Begin Theta (deg)   |   Begin Depth (km)   |    TakeOffAngle (deg)   |    "P","SV" or "SH"    |     Coloring     |     Calculation steps.
 <InputRays_BEGIN>
 
-0    500    12.00    S    red
-0    500    13.00    S    darkgreen
-0    500    14.00    S    blue
+0    500    13.0384    SV    black     4
 
 <InputRays_END>
 
 
 <CriticalAngle>       89.99
                       -- in deg. The criteria for "turning".
-
-
-<CalculationStep>     5
-                      -- Calculation limits.
-                         Notice the number of rays could increase exponentially ~ O(3^N)
-
-
 
 
 
@@ -71,7 +63,7 @@
 
 <LayerSetting_END>
 
-## RayPath settings.
+## Force reflection/refraction settings.
 ## Will do reflection,transmission at these depths.
 ##
 ## 1 column:
@@ -79,20 +71,37 @@
 <KeyDepths_BEGIN>
 
 0
+2861
 2891
 5149.5
 6371.0
 
 <KeyDepths_END>
+2831
+2861
+
+## 1D reference model setting.
+## The 2D feature (regions) will reference to the 1D reference model defined here.
+## This 1D reference model is refer to PREM.
+##
+## 4 columns (should be ordered increasingly by 1st column, for easier understanding)
+## PREM deviation begin depth (km)  |  dVp (%)   |   dVs (%)   |   dRho (%)
+<1DRef_BEGIN>
+
+2861    10    -30    0
+2891     0      0    0
+
+<1DRef_END>
+
 
 ## Region settings.
 ## Specify 2D features. dVp/dVs is compared to PREM at these depths.
 ##
-## > dVp1 dVs1 (in %)
+## > dVp1 dVs1 dRho1 (in %)
 ## theta,depth
 ## ...
 ##
-## > dVp2 dVs2
+## > dVp2 dVs2 dRho2 (in %)
 ## theta,depth
 ## ...
 ##
@@ -100,13 +109,12 @@
 <Polygons_BEGIN>
 
 
-> 0 -30
-8 2861
-15 2861
-15 2831
-8 2831
+> 0 -30 0
+26 2861
+32 2861
+32 2891
+26 2891
 
->
 
 <Polygons_END>
 
@@ -119,8 +127,7 @@
 ## plotsize (inches at diameter of the earth)  |  theta (in deg)   |   depth(km)
 <PlotWhere_BEGIN>
 
-7      13    6371
-250    12    2891
-100    60    0
+7      13     6371
+250    12.75  2891
 
 <PlotWhere_END>

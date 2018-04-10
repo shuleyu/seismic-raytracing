@@ -76,25 +76,46 @@ EOF
     # plot ray path.
     for file in `ls ${WORKDIR}/${OutFilePrefix}*`
     do
-        RayNumber=${file##*_}
-        RayColor=`grep -w ${RayNumber} ${WORKDIR}/${OutInfoFile} | awk 'NR==1 {print $1}'`
-        if [ ${RayColor} = "black" ]
-        then
-            [ `head -n 1 ${file} | awk '{print $2}'` = "S" ] && RayColor="red" || RayColor="blue"
-        fi
-        psxy ${file} ${PROJ} ${REG} -W0.5p,${RayColor} -m -O -K >> ${OUTFILE}
+
+		# Plot choice. Rays with segments larger than 80 degree is not plotted.
+		FinalDist=`tail -n 1 ${file} | awk '{if ($1>80) print 0; else print 1}'`
+		[ ${FinalDist} -eq 0 ] && continue
+
+        RayColor=`head -n 1 ${file} | awk '{print $2}'`
+		Amp=`head -n 1 ${file} | awk '{if ($8<0) A=-1; else A=1; printf "%.6lf",A*sqrt(A*$8)*4}'`
+		[ `echo "${Amp}<0" | bc` -eq 1 ] && RayColor="darkgreen"
+		Amp=`echo ${Amp} | awk '{if ($1<0) print -$1; else print $1}'`
+
+        psxy ${file} ${PROJ} ${REG} -W${Amp}p,${RayColor} -m -O -K >> ${OUTFILE}
+    done
+
+    for file in `ls ${WORKDIR}/${OutFilePrefix}*`
+    do
+		# Plot choice. Rays with segments larger than 80 degree is not plotted.
+		FinalDist=`tail -n 1 ${file} | awk '{if ($1>80) print 0; else print 1}'`
+		[ ${FinalDist} -eq 0 ] && continue
+
+		BeginR=`awk 'NR==2 {print $2}' ${file}`
+		EndR=`tail -n 1 ${file} | awk '{print $2}'`
+		TargetR=`echo ${BeginR} ${EndR} | awk '{print $1+($2-$1)*0.1}'`
+		Position=`awk -v T=${TargetR} 'NR>1 {if ($2>T) print $1,$2-T; else print $1,T-$2}' ${file} | sort -g -k 2,2 | head -n 1 | awk '{print $1}'`
+
+		pstext ${PROJ} ${REG} -N -O -K >> ${OUTFILE} << EOF
+${Position} ${TargetR} 5 0 0 CM ${file##*_}
+EOF
     done
 
     # plot info at surface.
 
     if [ `echo "${PLOTSIZE}>10" | bc` -eq 1 ]
     then
-        while read color z dist deg tt sec
+		${BASHCODEDIR}/Findfield.sh ${WORKDIR}/${ReceiverFile} "<TextHeight> <Dist> <TravelTime>" > tmpfile_$$
+        while read z dist tt
         do
             pstext ${PROJ} ${REG} -N -O -K >> ${OUTFILE} << EOF
-${dist} `echo ${PLOTSIZE} ${RE} ${z} | awk '{print $2+$2*2/$1*$3*0.5}'` 15 0 0 LB @;${color};${dist} deg. ${tt} sec.@;;
+${dist} `echo ${PLOTSIZE} ${RE} ${z} | awk '{print $2+$2*2/$1*$3*0.5}'` 15 0 0 LB ${dist} deg. ${tt} sec.
 EOF
-        done < ${WORKDIR}/${ReceiverFile}
+        done < tmpfile_$$
     fi
 
     # plot source.
@@ -109,7 +130,7 @@ EOF
     # plot velocity anomalies.
     for file in `ls ${WORKDIR}/${PolygonOutPrefix}* 2>/dev/null`
     do
-        psxy ${PROJ} ${REG} ${file} -m -L -W1p,black -O -K  >> ${OUTFILE}
+        psxy ${PROJ} ${REG} ${file} -m -L -W0.3p,black -O -K  >> ${OUTFILE}
     done
 
     # plot basemap at the CMB.
