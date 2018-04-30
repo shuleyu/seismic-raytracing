@@ -17,9 +17,9 @@
 
 ## reflection/transmission(refraction) switches.
 <TS>                  1
-<TD>                  1
-<RD>                  1
-                      -- For clearance, supress unwanted rays.
+<TD>                  0
+<RD>                  0
+                      -- Choose to supress unwanted rays.
                       TD: transmission, Difference wave-type (if possible).
                       TS: transmission, Same wave-type (if possible).
                       RD: reflection, Different wave-type wave-type (if possible).
@@ -34,7 +34,7 @@
 ## Begin Theta (deg)   |   Begin Depth (km)   |    TakeOffAngle (deg)   |    "P","SV" or "SH"    |     Coloring     |     Calculation steps.
 <InputRays_BEGIN>
 
-0    500    13.0384    SV    black     4
+0    500    20.99    SH    black     2
 
 <InputRays_END>
 
@@ -55,8 +55,8 @@
 
 0          0.1
 800        0.1
-2791       0.1
-2991       0.1
+2851       0.01
+2895       0.1
 5049.5     0.1
 5249.5     0.1
 6371.0     -1
@@ -71,14 +71,12 @@
 <KeyDepths_BEGIN>
 
 0
-2861
+2881
 2891
 5149.5
 6371.0
 
 <KeyDepths_END>
-2831
-2861
 
 ## 1D reference model setting.
 ## The 2D feature (regions) will reference to the 1D reference model defined here.
@@ -88,8 +86,8 @@
 ## PREM deviation begin depth (km)  |  dVp (%)   |   dVs (%)   |   dRho (%)
 <1DRef_BEGIN>
 
-2861    10    -30    0
-2891     0      0    0
+2881    0   -10    0
+2891    0     0    0
 
 <1DRef_END>
 
@@ -128,6 +126,6 @@
 <PlotWhere_BEGIN>
 
 7      13     6371
-250    12.75  2891
+150    31     2891
 
 <PlotWhere_END>

@@ -77,8 +77,8 @@ EOF
     for file in `ls ${WORKDIR}/${OutFilePrefix}*`
     do
 
-		# Plot choice. Rays with segments larger than 80 degree is not plotted.
-		FinalDist=`tail -n 1 ${file} | awk '{if ($1>80) print 0; else print 1}'`
+		# Plot choice. Rays with segments larger than 90 degree is not plotted.
+		FinalDist=`tail -n 1 ${file} | awk '{if ($1>90) print 0; else print 1}'`
 		[ ${FinalDist} -eq 0 ] && continue
 
         RayColor=`head -n 1 ${file} | awk '{print $2}'`
@@ -91,8 +91,8 @@ EOF
 
     for file in `ls ${WORKDIR}/${OutFilePrefix}*`
     do
-		# Plot choice. Rays with segments larger than 80 degree is not plotted.
-		FinalDist=`tail -n 1 ${file} | awk '{if ($1>80) print 0; else print 1}'`
+		# Plot choice. Rays with segments larger than 90 degree is not plotted.
+		FinalDist=`tail -n 1 ${file} | awk '{if ($1>90) print 0; else print 1}'`
 		[ ${FinalDist} -eq 0 ] && continue
 
 		BeginR=`awk 'NR==2 {print $2}' ${file}`

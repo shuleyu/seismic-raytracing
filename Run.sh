@@ -87,10 +87,6 @@ mkdir -p ${PLOTDIR}
 #============================================
 trap "rm -f ${WORKDIR}/*_$$; exit 1" SIGINT
 
-cd ${CPPCODEDIR}
-make
-[ $? -ne 0 ] && rm -f ${WORKDIR}/*_$$ && exit 1
-
 cd ${SRCDIR}
 make OUTDIR=${EXECDIR} CPPDIR=${CPPCODEDIR}
 [ $? -ne 0 ] && rm -f ${WORKDIR}/*_$$ && exit 1

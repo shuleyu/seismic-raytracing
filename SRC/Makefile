@@ -1,10 +1,10 @@
 # Compile parameters & dirs, some could be overwritten in Run.sh
 # Notice: the order of library names in LIBS could matter.
-COMP      := c++ --std=c++14 -Wall
+COMP      := c++ -std=c++14 -Wall
 OUTDIR    := .
 INCDIR    := -I. -I$(CPPDIR)
-LIBDIR    := -L. -L$(CPPDIR)
-LIBS      := -lASU_tools_cpp -lm
+LIBDIR    := -L.
+LIBS      := -lm
 
 # all *cpp files
 SRCFILES  := $(wildcard *.cpp)
@@ -26,13 +26,12 @@ all: $(EXEFILES) $(OBJS)
 -include $(DEPFILES)
 
 %.out: %.o $(FUNOBJS)
-	$(COMP) -o $@ $^ $(INCDIR) $(LIBDIR) $(LIBS)
+	@echo "Updating: $@ ..."
+	@$(COMP) -o $@ $^ $(INCDIR) $(LIBDIR) $(LIBS)
 
 $(OUTDIR)/%.o: %.cpp
-	$(COMP) -MMD -MP -c $< -o $@ $(INCDIR)
-
-$(CPPDIR)/ASU_tools.hpp: $(CPPDIR)/libASU_tools_cpp.a
-	@touch $@
+	@echo "Updating: $@ ..."
+	@$(COMP) -MD -MP -c $< -o $@ $(INCDIR)
 
 clean:
 	rm -f $(OUTDIR)/*.out $(OUTDIR)/*.o $(OUTDIR)/*.d

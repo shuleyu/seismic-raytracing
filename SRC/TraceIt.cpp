@@ -27,11 +27,11 @@ class Ray {
     public:
         bool IsP,GoUp,GoLeft;
         string Color,Comp,Debug;
-        int InRegion,Prev,RemainingLegs;
-        double Pt,Pr,TravelTime,TravelDist,RayP,Amp,Inc;
+        int InRegion,Prev,RemainingLegs,Surfacing;
+        double Pt,Pr,TravelTime,TravelDist,RayP,Amp,Inc,Takeoff;
 
-        Ray(bool p, bool g, bool l, string c, string cmp, int i,int rl, double th, double r, double t, double d, double rp) :
-            IsP(p), GoUp(g), GoLeft(l), Color(c), Comp(cmp), Debug(""), InRegion(i), Prev(-1), RemainingLegs(rl), Pt(th),Pr(r),TravelTime(t),TravelDist(d), RayP(rp), Amp(1),Inc(0) {}
+        Ray(bool p, bool g, bool l, string c, string cmp, int i,int rl, double th, double r, double t, double d, double rp,double to) :
+            IsP(p), GoUp(g), GoLeft(l), Color(c), Comp(cmp), Debug(""), InRegion(i), Prev(-1), RemainingLegs(rl), Surfacing(0), Pt(th),Pr(r),TravelTime(t),TravelDist(d), RayP(rp), Amp(1),Inc(0), Takeoff(to) {}
 };
 
 
@@ -323,12 +323,12 @@ int main(int argc, char **argv){
         double rayp=M_PI/180*(RE-depth)*sin(fabs(takeoff)/180*M_PI)/(phase[0]=='P'?ans[0]*dVp[rid]:ans[1]*dVs[rid]);
 
         // Push this ray into "RayHeads" for future processing.
-        RayHeads.push_back(Ray(phase[0]=='P',fabs(takeoff)>=90,takeoff<0,color,phase,rid,steps,theta,RE-depth,0,0,rayp));
+        RayHeads.push_back(Ray(phase[0]=='P',fabs(takeoff)>=90,takeoff<0,color,phase,rid,steps,theta,RE-depth,0,0,rayp,takeoff));
     }
     fpin.close();
 
     fpout.open(PS[ReceiverFile]);
-    fpout << "<TextHeight> <Dist> <TravelTime> <DispAmp> <Incident> <RemainingLegs> <WaveTypeTrain> <RayTrain>" << '\n';
+    fpout << "<TextHeight> <Takeoff> <Dist> <TravelTime> <DispAmp> <Incident> <RemainingLegs> <WaveTypeTrain> <RayTrain>" << '\n';
     fpout.close();
 
 
@@ -643,6 +643,9 @@ int main(int argc, char **argv){
             if (Mode=="LS" && RayHeads[i].Comp=="P") T_PP=Coef[1];
             if (Mode=="LL" && RayHeads[i].Comp=="P") T_PP=Coef[1];
 
+            if (RayHeads[i].IsP) ts&=(T_PP.imag()==0);
+            else ts&=(T_SS.imag()==0);
+
             //// take-off angles.
             if (RayHeads[i].IsP) {c1=vp1;c2=vp2;}
             else {c1=vs1;c2=vs2;}
@@ -666,6 +669,9 @@ int main(int argc, char **argv){
             if (Mode=="SS" && RayHeads[i].Comp!="SH") {T_PS=Coef[1];T_SP=Coef[6];}
             if (Mode=="SL" && RayHeads[i].Comp=="SV") T_SP=Coef[5];
             if (Mode=="LS" && RayHeads[i].Comp=="P") T_PS=Coef[2];
+
+            if (RayHeads[i].IsP) td&=(T_PS.imag()==0);
+            else td&=(T_SP.imag()==0);
 
             //// take-off angles.
             if (RayHeads[i].IsP) {c1=vp1;c2=vs2;}
@@ -724,6 +730,7 @@ int main(int argc, char **argv){
                 else {R_PP=Coef[0];R_SS=Coef[3];}
             }
             if ((Mode=="LS" || Mode=="LL") && RayHeads[i].Comp=="P") R_PP=Coef[0];
+            if (ans.second) R_SS=R_PP=1;
 
             //// new ray paramter.
             double Takeoff_rs=Lon2180(-Rayd_Hor+TiltAngle+90);
@@ -759,19 +766,20 @@ int main(int argc, char **argv){
             fpout.open(PS[OutFilePrefix]+to_string(i+1),ofstream::app);
             fpout << "> " << (RayHeads[i].Color=="black"?(RayHeads[i].IsP?"blue":"red"):RayHeads[i].Color) << " "
                           << (RayHeads[i].IsP?"P ":"S ") << RayHeads[i].TravelTime << " sec. " << RayHeads[i].Inc << " IncDeg. "
-                          << RayHeads[i].Amp << " DispAmp. " << endl;
+                          << RayHeads[i].Amp << " DispAmp. " << RayHeads[i].TravelDist << " km. " << endl;
             for (int j=0;j<RayEnd;++j)
                 fpout << RayHeads[i].Pt+M*degree[j] << " " << R[CurRegion][rIndex(j)] << '\n';
             fpout.close();
 
             // If ray reaches surface, output info at the surface.
-            if (fabs(NextPr_R-RE)<MinInc) {
+            if (fabs(NextPr_R-RE)<MinInc) ++RayHeads[i].Surfacing;
+            if (fabs(NextPr_R-RE)<MinInc && RayHeads[i].Surfacing<2) {
 
                 fpout.open(PS[ReceiverFile],ofstream::app);
 
                 if (PlotColorPosition.find(RayHeads[i].Color)==PlotColorPosition.end())
                     PlotColorPosition[RayHeads[i].Color]=PlotPosition++;
-                fpout << PlotColorPosition[RayHeads[i].Color] << " " ;
+                fpout << PlotColorPosition[RayHeads[i].Color] << " ";
 
                 // Accumulate the travel-time.
                 int I=i;
@@ -782,10 +790,12 @@ int main(int argc, char **argv){
                     tt+=RayHeads[I].TravelTime;
                     I=RayHeads[I].Prev;
                 }
-                fpout << NextPt_R << " " << tt << " " << RayHeads[i].Amp << " " << RayHeads[i].Inc << " " << RayHeads[i].RemainingLegs << " ";
+                fpout << RayHeads[hh.back()].Takeoff << " " << NextPt_R << " "
+                      << tt << " " << RayHeads[i].Amp << " " << RayHeads[i].Inc << " " << RayHeads[i].RemainingLegs << " ";
                 for (auto rit=hh.rbegin();rit!=hh.rend();++rit) fpout << (RayHeads[*rit].IsP?"P":"S") << ((*rit)==*hh.begin()?" ":"->");
                 for (auto rit=hh.rbegin();rit!=hh.rend();++rit) fpout << (1+*rit) << ((*rit)==*hh.begin()?"\n":"->");
                 fpout.close();
+                continue;
             }
 
 
@@ -822,9 +832,7 @@ int main(int argc, char **argv){
                 RayHeads.back().GoUp=(fabs(Takeoff_ts)>90);
                 RayHeads.back().GoLeft=(Takeoff_ts<0);
                 RayHeads.back().InRegion=NextRegion;
-                double sign1=(T_PP.imag()==0?(T_PP.real()<0?-1:1):1);
-                double sign2=(T_SS.imag()==0?(T_SS.real()<0?-1:1):1);
-                RayHeads.back().Amp*=(RayHeads.back().IsP?(sign1*abs(T_PP)):(sign2*abs(T_SS)));
+                RayHeads.back().Amp*=(RayHeads.back().IsP?T_PP.real():T_SS.real());
             }
 
             if (td) {
@@ -837,9 +845,7 @@ int main(int argc, char **argv){
                 RayHeads.back().GoUp=(fabs(Takeoff_td)>90);
                 RayHeads.back().GoLeft=(Takeoff_td<0);
                 RayHeads.back().InRegion=NextRegion;
-                double sign1=(T_PS.imag()==0?(T_PS.real()<0?-1:1):1);
-                double sign2=(T_SP.imag()==0?(T_SP.real()<0?-1:1):1);
-                RayHeads.back().Amp*=(RayHeads.back().IsP?(sign1*abs(T_PS)):(sign2*abs(T_SP)));
+                RayHeads.back().Amp*=(RayHeads.back().IsP?T_PS.real():T_SP.real());
             }
 
             if (rd) {
