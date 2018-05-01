@@ -234,7 +234,7 @@ int main(int argc, char **argv){
                     for (size_t k=0;k<NPTS;++k) tmpregion2.push_back(make_pair(tmpregion[i].first+k*dT,tmpregion[i].second+k*dR));
                     tmpregion2.pop_back();
 
-                    ofstream fpout(PS[PolygonOutPrefix]+to_string(Regions.size()-1));
+                    ofstream fpout(PS[PolygonOutPrefix]+to_string(Regions.size()));
                     for (auto &item:tmpregion2) fpout << item.first << " " << item.second << '\n';
                     fpout.close();
                 }
@@ -773,7 +773,8 @@ int main(int argc, char **argv){
 
             // If ray reaches surface, output info at the surface.
             if (fabs(NextPr_R-RE)<MinInc) ++RayHeads[i].Surfacing;
-            if (fabs(NextPr_R-RE)<MinInc && RayHeads[i].Surfacing<2) {
+            if (fabs(NextPr_R-RE)<MinInc) {
+//             if (fabs(NextPr_R-RE)<MinInc && RayHeads[i].Surfacing<2) { // Uncomment to only output once-surfacing result.
 
                 fpout.open(PS[ReceiverFile],ofstream::app);
 
@@ -795,7 +796,7 @@ int main(int argc, char **argv){
                 for (auto rit=hh.rbegin();rit!=hh.rend();++rit) fpout << (RayHeads[*rit].IsP?"P":"S") << ((*rit)==*hh.begin()?" ":"->");
                 for (auto rit=hh.rbegin();rit!=hh.rend();++rit) fpout << (1+*rit) << ((*rit)==*hh.begin()?"\n":"->");
                 fpout.close();
-                continue;
+//                 continue;  // Uncomment to stop calculate the ray if it reaches the surface.
             }
 
 

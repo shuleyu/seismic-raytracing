@@ -91,6 +91,8 @@ cd ${SRCDIR}
 make OUTDIR=${EXECDIR} CPPDIR=${CPPCODEDIR}
 [ $? -ne 0 ] && rm -f ${WORKDIR}/*_$$ && exit 1
 
+echo "Compile finished...running..."
+
 # ==============================================
 #           ! Work Begin !
 # ==============================================
@@ -108,6 +110,8 @@ cat >> ${WORKDIR}/stdout << EOF
 End Date: `date`
 ======================================
 EOF
+
+echo "Finished."
 
 # Clean up.
 rm -f ${WORKDIR}/*_$$

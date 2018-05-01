@@ -17,8 +17,8 @@
 
 ## reflection/transmission(refraction) switches.
 <TS>                  1
-<TD>                  0
-<RD>                  0
+<TD>                  1
+<RD>                  1
                       -- Choose to supress unwanted rays.
                       TD: transmission, Difference wave-type (if possible).
                       TS: transmission, Same wave-type (if possible).
@@ -34,7 +34,7 @@
 ## Begin Theta (deg)   |   Begin Depth (km)   |    TakeOffAngle (deg)   |    "P","SV" or "SH"    |     Coloring     |     Calculation steps.
 <InputRays_BEGIN>
 
-0    500    20.99    SH    black     2
+0    500    20.99    PSV    black     3
 
 <InputRays_END>
 
@@ -71,7 +71,7 @@
 <KeyDepths_BEGIN>
 
 0
-2881
+2831
 2891
 5149.5
 6371.0
@@ -86,8 +86,7 @@
 ## PREM deviation begin depth (km)  |  dVp (%)   |   dVs (%)   |   dRho (%)
 <1DRef_BEGIN>
 
-2881    0   -10    0
-2891    0     0    0
+2831    10    -10    0
 
 <1DRef_END>
 
@@ -109,10 +108,11 @@
 
 > 0 -30 0
 26 2861
-32 2861
-32 2891
-26 2891
+28 2861
+30 2891
+24 2891
 
+>
 
 <Polygons_END>
 
@@ -126,6 +126,6 @@
 <PlotWhere_BEGIN>
 
 7      13     6371
-150    31     2891
+250    27     2891
 
 <PlotWhere_END>
