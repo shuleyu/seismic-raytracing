@@ -77,31 +77,31 @@ EOF
     for file in `ls ${WORKDIR}/${OutFilePrefix}*`
     do
 
-		# Plot choice. Rays with segments larger than 90 degree is not plotted.
-# 		FinalDist=`tail -n 1 ${file} | awk '{if ($1>90) print 0; else print 1}'`
-# 		[ ${FinalDist} -eq 0 ] && continue
+        # Plot choice. Rays with segments larger than 90 degree is not plotted.
+#         FinalDist=`tail -n 1 ${file} | awk '{if ($1>90) print 0; else print 1}'`
+#         [ ${FinalDist} -eq 0 ] && continue
 
         RayColor=`head -n 1 ${file} | awk '{print $2}'`
-		Amp=`head -n 1 ${file} | awk '{if ($8<0) A=-1; else A=1; printf "%.6lf",A*sqrt(A*$8)*4}'`
-		[ `echo "${Amp}<0" | bc` -eq 1 ] && RayColor="darkgreen"
-		Amp=`echo ${Amp} | awk '{if ($1<0) print -$1; else print $1}'`
-		[ `echo "${Amp}<0.1" | bc` -eq 1 ] && Amp=0.1
+        Amp=`head -n 1 ${file} | awk '{if ($8<0) A=-1; else A=1; printf "%.6lf",A*sqrt(A*$8)*4}'`
+        [ `echo "${Amp}<0" | bc` -eq 1 ] && RayColor="darkgreen"
+        Amp=`echo ${Amp} | awk '{if ($1<0) print -$1; else print $1}'`
+        [ `echo "${Amp}<0.1" | bc` -eq 1 ] && Amp=0.1
 
         psxy ${file} ${PROJ} ${REG} -W${Amp}p,${RayColor} -m -O -K >> ${OUTFILE}
     done
 
     for file in `ls ${WORKDIR}/${OutFilePrefix}*`
     do
-		# Plot choice. Rays with segments larger than 90 degree is not plotted.
-# 		FinalDist=`tail -n 1 ${file} | awk '{if ($1>90) print 0; else print 1}'`
-# 		[ ${FinalDist} -eq 0 ] && continue
+        # Plot choice. Rays with segments larger than 90 degree is not plotted.
+#         FinalDist=`tail -n 1 ${file} | awk '{if ($1>90) print 0; else print 1}'`
+#         [ ${FinalDist} -eq 0 ] && continue
 
-		BeginR=`awk 'NR==2 {print $2}' ${file}`
-		EndR=`tail -n 1 ${file} | awk '{print $2}'`
-		TargetR=`echo ${BeginR} ${EndR} | awk '{print $1+($2-$1)*0.1}'`
-		Position=`awk -v T=${TargetR} 'NR>1 {if ($2>T) print $1,$2-T; else print $1,T-$2}' ${file} | sort -g -k 2,2 | head -n 1 | awk '{print $1}'`
+        BeginR=`awk 'NR==2 {print $2}' ${file}`
+        EndR=`tail -n 1 ${file} | awk '{print $2}'`
+        TargetR=`echo ${BeginR} ${EndR} | awk '{print $1+($2-$1)*0.1}'`
+        Position=`awk -v T=${TargetR} 'NR>1 {if ($2>T) print $1,$2-T; else print $1,T-$2}' ${file} | sort -g -k 2,2 | head -n 1 | awk '{print $1}'`
 
-		pstext ${PROJ} ${REG} -N -O -K >> ${OUTFILE} << EOF
+        pstext ${PROJ} ${REG} -N -O -K >> ${OUTFILE} << EOF
 ${Position} ${TargetR} 5 0 0 CM ${file##*_}
 EOF
     done
@@ -110,7 +110,7 @@ EOF
 
     if [ `echo "${PLOTSIZE}>10" | bc` -eq 1 ]
     then
-		${BASHCODEDIR}/Findfield.sh ${WORKDIR}/${ReceiverFile} "<TextHeight> <Dist> <TravelTime>" > tmpfile_$$
+        ${BASHCODEDIR}/Findfield.sh ${WORKDIR}/${ReceiverFile} "<TextHeight> <Dist> <TravelTime>" > tmpfile_$$
         while read z dist tt
         do
             pstext ${PROJ} ${REG} -N -O -K >> ${OUTFILE} << EOF
@@ -151,6 +151,5 @@ done < ${WORKDIR}/tmpfile_PlotWhere_${RunNumber} # done plot position loop.
 Title=`basename $0`
 cat `ls -rt *ps` > ${PLOTDIR}/${Title%.sh}.ps
 ps2pdf ${PLOTDIR}/${Title%.sh}.ps ${PLOTDIR}/${Title%.sh}.pdf
-tomini ${PLOTDIR}/${Title%.sh}.pdf
 
 exit 0

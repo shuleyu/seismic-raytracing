@@ -71,7 +71,7 @@ while read Name line1 line2
 do
     Name=${Name%_*}
     awk -v N1=${line1} -v N2=${line2} '{ if ( $1!="" && N1<NR && NR<N2 ) print $0}' ${WORKDIR}/tmpfile_INFILE_$$ \
-	| sed 's/^[[:blank:]]*//g' > ${WORKDIR}/tmpfile_${Name}_$$
+    | sed 's/^[[:blank:]]*//g' > ${WORKDIR}/tmpfile_${Name}_$$
 done < tmpfile_parameters_$$
 
 #============================================

@@ -18,7 +18,7 @@ int main(int argc, char **argv){
 
     vector<double> oldX,oldY,newX;
 
-	ifstream fpin(infile);
+    ifstream fpin(infile);
     double x,y;
     while (fpin >> x >> y){
         oldX.push_back(x);
@@ -27,11 +27,11 @@ int main(int argc, char **argv){
     fpin.close();
 
 
-	fpin.open(infile2);
+    fpin.open(infile2);
     while (fpin >> x ) newX.push_back(x);
     fpin.close();
 
-	auto newY=Interpolate(oldX,oldY,newX,false);
+    auto newY=Interpolate(oldX,oldY,newX,false);
 
     for (size_t i=0;i<newY.size();++i)
         printf("%.8lf %.8lf\n",newX[i],newY[i]);

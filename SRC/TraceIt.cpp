@@ -540,8 +540,8 @@ int main(int argc, char **argv){
                 // Twick travel times and travel distance, compensate for the lost part.
                 double dlx=(p2.first-JuncPt)*M_PI*JuncPr/180,dly=p2.second-JuncPr;
                 double dl=sqrt(dlx*dlx+dly*dly);
-				ans.first.second+=dl;
-				ans.first.first+=dl/v[CurRegion][rIndex(RayEnd-1)]; // Use the velocit within current region to avoid possible "inf" travel time.
+                ans.first.second+=dl;
+                ans.first.first+=dl/v[CurRegion][rIndex(RayEnd-1)]; // Use the velocit within current region to avoid possible "inf" travel time.
 
 
                 // Get the geometry of the boundary.
