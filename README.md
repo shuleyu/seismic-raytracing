@@ -7,4 +7,4 @@ For example, the ScS reflection on an ellipse-shaped low velocity structure on t
 
 ![alt text](https://github.com/shuleyu/raytracing/blob/master/example2.png)
 
-Ray comes from left (changing slowness at each subplot). red if polarity is positive, green means negative polarity.
+Ray comes from left (changing slowness for each subplot). red if polarity is positive, green means negative polarity.
