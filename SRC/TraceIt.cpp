@@ -52,7 +52,7 @@ vector<double> MakeRef(const double &depth,const vector<vector<double>> &dev){
 
 int main(int argc, char **argv){
 
-    enum PIenum{DebugInfo,TS,TD,RD,FLAG1};
+    enum PIenum{DebugInfo,TS,TD,RD,StopAtSurface,FLAG1};
     enum PSenum{InputRays,Layers,Depths,Ref,Polygons,OutFilePrefix,ReceiverFile,PolygonOutPrefix,FLAG2};
     enum Penum{CriticalAngle,FLAG3};
 
@@ -328,7 +328,7 @@ int main(int argc, char **argv){
     fpin.close();
 
     fpout.open(PS[ReceiverFile]);
-    fpout << "<TextHeight> <Takeoff> <Dist> <TravelTime> <DispAmp> <Incident> <RemainingLegs> <WaveTypeTrain> <RayTrain>" << '\n';
+    fpout << "<TextHeight> <Takeoff> <Rayp> <Incident> <Dist> <TravelTime> <DispAmp> <RemainingLegs> <WaveTypeTrain> <RayTrain>" << '\n';
     fpout.close();
 
 
@@ -451,7 +451,7 @@ int main(int argc, char **argv){
                         break;
                     }
                 }
-                else { // New leg staats in 1D reference region. Search for the region it enters.
+                else { // New leg starts in 1D reference region. Search for the region it enters.
                     for (size_t k=1;k<Regions.size();++k){
                         if (PointInPolygon(Regions[k],p)) { // If ray enters another region.
                             RayEnd=j;
@@ -773,8 +773,7 @@ int main(int argc, char **argv){
 
             // If ray reaches surface, output info at the surface.
             if (fabs(NextPr_R-RE)<MinInc) ++RayHeads[i].Surfacing;
-            if (fabs(NextPr_R-RE)<MinInc) {
-//             if (fabs(NextPr_R-RE)<MinInc && RayHeads[i].Surfacing<2) { // Uncomment to only output once-surfacing result.
+            if (fabs(NextPr_R-RE)<MinInc && (PI[StopAtSurface]==0 || RayHeads[i].Surfacing<2)) {
 
                 fpout.open(PS[ReceiverFile],ofstream::app);
 
@@ -791,12 +790,12 @@ int main(int argc, char **argv){
                     tt+=RayHeads[I].TravelTime;
                     I=RayHeads[I].Prev;
                 }
-                fpout << RayHeads[hh.back()].Takeoff << " " << NextPt_R << " "
-                      << tt << " " << RayHeads[i].Amp << " " << RayHeads[i].Inc << " " << RayHeads[i].RemainingLegs << " ";
-                for (auto rit=hh.rbegin();rit!=hh.rend();++rit) fpout << (RayHeads[*rit].IsP?"P":"S") << ((*rit)==*hh.begin()?" ":"->");
+                fpout << RayHeads[hh.back()].Takeoff << " " << RayHeads[i].RayP << " " << RayHeads[i].Inc << " " << NextPt_R << " "
+                      << tt << " " << RayHeads[i].Amp << " " << RayHeads[i].RemainingLegs << " ";
+                for (auto rit=hh.rbegin();rit!=hh.rend();++rit) fpout << (RayHeads[*rit].IsP?(RayHeads[*rit].GoUp?"p":"P"):(RayHeads[*rit].GoUp?"s":"S")) << ((*rit)==*hh.begin()?" ":"->");
                 for (auto rit=hh.rbegin();rit!=hh.rend();++rit) fpout << (1+*rit) << ((*rit)==*hh.begin()?"\n":"->");
                 fpout.close();
-//                 continue;  // Uncomment to stop calculate the ray if it reaches the surface.
+                if (PI[StopAtSurface]==1) continue;
             }
 
 

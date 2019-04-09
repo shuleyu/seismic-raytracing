@@ -86,6 +86,7 @@ EOF
         [ `echo "${Amp}<0" | bc` -eq 1 ] && RayColor="darkgreen"
         Amp=`echo ${Amp} | awk '{if ($1<0) print -$1; else print $1}'`
         [ `echo "${Amp}<0.1" | bc` -eq 1 ] && Amp=0.1
+        [ ${LineThicknessUseAmp} -ne 1 ] && Amp=0.5
 
         psxy ${file} ${PROJ} ${REG} -W${Amp}p,${RayColor} -m -O -K >> ${OUTFILE}
     done
@@ -151,5 +152,6 @@ done < ${WORKDIR}/tmpfile_PlotWhere_${RunNumber} # done plot position loop.
 Title=`basename $0`
 cat `ls -rt *ps` > ${PLOTDIR}/${Title%.sh}.ps
 ps2pdf ${PLOTDIR}/${Title%.sh}.ps ${PLOTDIR}/${Title%.sh}.pdf
+tomini ${PLOTDIR}/${Title%.sh}.pdf
 
 exit 0

@@ -13,9 +13,8 @@ using namespace std;
 
 int main(){
 
-    ofstream fpout("Gaussian");
-    double X0=34.1265,Y0=2891;
-    double dt=0.005,L=2,H=30,sigma=0.3;
+    double X0=29.234,Y0=2891;
+    double dt=0.005,L=7.5,H=25,sigma=2.35482;
 
     vector<double> A;
     for (size_t i=0;i<L/dt;++i){
@@ -24,10 +23,13 @@ int main(){
     }
 
     Normalize(A);
+
+    ofstream fpout("Gaussian");
     for (size_t i=0;i<A.size();++i){
         fpout << X0-L/2+i*dt << " " << Y0-H*A[i] << '\n';
     }
     fpout << X0+L/2 << " " << 2891 << '\n';
+    fpout << X0-L/2 << " " << 2891 << '\n';
     fpout.close();
 
 	return 0;
