@@ -21,8 +21,8 @@
 ## switches: (R)eflection/(T)ransmission to (S)ame/(D)ifferent wave types (P or S)
 
 <TS>                  1
-<TD>                  0
-<RD>                  0
+<TD>                  1
+<RD>                  1
 
                       -- Choose to supress unwanted rays.
                       TD: transmission, Difference wave-type (if possible).
