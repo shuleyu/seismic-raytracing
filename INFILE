@@ -4,6 +4,7 @@
 <BASHCODEDIR>         /home/shule/Research/Fun.Bash.c001
 <CPPCODEDIR>          /home/shule/Research/Fun.C++.c003
 
+<nThread>             4
 
 # Outputs
 <DebugInfo>           0
@@ -34,14 +35,14 @@
 <StopAtSurface>       1
 
 ## Ray settings.
-## using "black" in Coloring resulting in plotting P as red and S as blue.
+## using "black" in Coloring resulting in plotting S as red and P as blue.
 ##
 ## 5 columns:
 ##
 ## Begin Theta (deg)   |   Begin Depth (km)   |    TakeOffAngle (deg)   |    "P","SV" or "SH"    |     Coloring     |     Calculation steps.
 <InputRays_BEGIN>
 
-0    500    22    SH    black     6
+0    500    22    P    black     2
 
 <InputRays_END>
 
@@ -116,7 +117,7 @@
 <Polygons_BEGIN>
 
 
-> 0 11.2 0
+> 0 -5 0
 
 25.484 2883.97
 25.489 2883.94

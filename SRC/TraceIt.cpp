@@ -19,8 +19,14 @@
 #include<RayPath.hpp>
 #include<SegmentJunction.hpp>
 #include<PlaneWaveCoefficients.hpp>
+#include<ReadParameters.hpp>
 
 using namespace std;
+
+enum PI{DebugInfo,TS,TD,RD,StopAtSurface,nThread,FLAG1};
+enum PS{InputRays,Layers,Depths,Ref,Polygons,OutFilePrefix,ReceiverFile,PolygonOutPrefix,FLAG2};
+enum PF{CriticalAngle,FLAG3};
+ReadParameters<PI,PS,PF> P;
 
 // Define the ray head structure.
 class Ray {
@@ -52,96 +58,14 @@ vector<double> MakeRef(const double &depth,const vector<vector<double>> &dev){
 
 int main(int argc, char **argv){
 
-    enum PIenum{DebugInfo,TS,TD,RD,StopAtSurface,FLAG1};
-    enum PSenum{InputRays,Layers,Depths,Ref,Polygons,OutFilePrefix,ReceiverFile,PolygonOutPrefix,FLAG2};
-    enum Penum{CriticalAngle,FLAG3};
-
-    /****************************************************************
-
-                Deal with inputs. (Store them in PI,PS,P)
-
-    ****************************************************************/
-
-    if (argc!=4){
-        cerr << "In C++: Argument Error!" << endl;
-        return 1;
-    }
-
-    int int_num,string_num,double_num;
-
-    vector<int> PI;
-    vector<string> PS;
-    vector<double> P;
-
-    int_num=atoi(argv[1]);
-    string_num=atoi(argv[2]);
-    double_num=atoi(argv[3]);
-
-    if (FLAG1!=int_num){
-        cerr << "In C++: Ints name count error!" << endl;
-        return 1;
-    }
-    if (FLAG2!=string_num){
-        cerr << "In C++: Strings name count error!" << endl;
-        return 1;
-    }
-    if (FLAG3!=double_num){
-        cerr << "In C++: Doubles name count error!" << endl;
-        return 1;
-    }
-
-    string InputTmpStr;
-    int InputTmpInt,InputTmpCnt;
-    double InputTmpDouble;
-
-    InputTmpCnt=0;
-    while (getline(cin,InputTmpStr)){
-        ++InputTmpCnt;
-        stringstream ss(InputTmpStr);
-        if (InputTmpCnt<=int_num){
-            if (ss >> InputTmpInt && ss.eof()){
-                PI.push_back(InputTmpInt);
-            }
-            else{
-                cerr << "In C++: Ints reading Error !" << endl;
-                return 1;
-            }
-        }
-        else if (InputTmpCnt<=int_num+string_num){
-            PS.push_back(InputTmpStr);
-        }
-        else if (InputTmpCnt<=int_num+string_num+double_num){
-            if (ss >> InputTmpDouble && ss.eof()){
-                P.push_back(InputTmpDouble);
-            }
-            else{
-                cerr << "In C++: Doubles reading Error !" << endl;
-                return 1;
-            }
-        }
-        else{
-            cerr << "In C++: Redundant inputs !" << endl;
-            return 1;
-        }
-    }
-    if (InputTmpCnt!=int_num+string_num+double_num){
-        cerr << "In C++: Not enough inputs !" << endl;
-        return 1;
-    }
-
-    /****************************************************************
-
-                              Job begin.
-
-    ****************************************************************/
-
+    P=ReadParameters<PI,PS,PF> (argc,argv,cin,FLAG1,FLAG2,FLAG3);
 
     // Create 1D reference layers. (R[0]. 0 means 1D reference model)
     const double RE=6371.0;
     vector<vector<double>> R{vector<double> ()};
     double prev_depth,depth,inc,next_inc,MinInc;
 
-    ifstream fpin(PS[Layers]);
+    ifstream fpin(P[Layers]);
     fpin >> prev_depth >> inc;
     MinInc=inc; // Record the minimum layer increment for later use. (Solve round-off error related issues)
 
@@ -166,7 +90,7 @@ int main(int argc, char **argv){
     double dvp,dvs,drho;
     vector<vector<double>> Deviation;
 
-    fpin.open(PS[Ref]);
+    fpin.open(P[Ref]);
     while (fpin >> depth >> dvp >> dvs >> drho) Deviation.push_back({depth,dvp,dvs,drho});
     auto cmp=[](const vector<double> &p1, const vector<double> &p2){return p1[0]>p2[0];};
     sort(Deviation.begin(),Deviation.end(),cmp); // sort it to descending order (this property is used in MakeRef).
@@ -188,7 +112,7 @@ int main(int argc, char **argv){
 
     // Read in special depths (force reflection & refraction at these depths).
     vector<double> SpecialDepths;
-    fpin.open(PS[Depths]);
+    fpin.open(P[Depths]);
     while (fpin >> depth) SpecialDepths.push_back(depth);
     sort(SpecialDepths.begin(),SpecialDepths.end()); // sort it ascending.
     fpin.close();
@@ -204,7 +128,7 @@ int main(int argc, char **argv){
     vector<vector<pair<double,double>>> Regions{tmpregion};
     vector<double> dVp{1},dVs{1},dRho{1};
 
-    fpin.open(PS[Polygons]);
+    fpin.open(P[Polygons]);
     while (getline(fpin,tmpstr)){
 
         if (tmpstr.empty()) continue;
@@ -234,7 +158,7 @@ int main(int argc, char **argv){
                     for (size_t k=0;k<NPTS;++k) tmpregion2.push_back(make_pair(tmpregion[i].first+k*dT,tmpregion[i].second+k*dR));
                     tmpregion2.pop_back();
 
-                    ofstream fpout(PS[PolygonOutPrefix]+to_string(Regions.size()));
+                    ofstream fpout(P[PolygonOutPrefix]+to_string(Regions.size()));
                     for (auto &item:tmpregion2) fpout << item.first << " " << item.second << '\n';
                     fpout.close();
                 }
@@ -294,7 +218,7 @@ int main(int argc, char **argv){
     // For plotting: 1D reference property deviation depths.
     ofstream fpout;
     if (!Deviation.empty()){
-        fpout.open(PS[PolygonOutPrefix]+"0");
+        fpout.open(P[PolygonOutPrefix]+"0");
         for (auto &item:Deviation) {
             fpout << ">\n";
             double d=RE-item[0];
@@ -310,7 +234,7 @@ int main(int argc, char **argv){
     double theta,takeoff;
     vector<Ray> RayHeads;
 
-    fpin.open(PS[InputRays]);
+    fpin.open(P[InputRays]);
     while (fpin >> theta >> depth >> takeoff >> phase >> color >> steps){
 
         // Source in any polygons?
@@ -327,7 +251,7 @@ int main(int argc, char **argv){
     }
     fpin.close();
 
-    fpout.open(PS[ReceiverFile]);
+    fpout.open(P[ReceiverFile]);
     fpout << "<TextHeight> <Takeoff> <Rayp> <Incident> <Dist> <TravelTime> <DispAmp> <RemainingLegs> <WaveTypeTrain> <RayTrain>" << '\n';
     fpout.close();
 
@@ -376,7 +300,7 @@ int main(int argc, char **argv){
 
 
             // Print some debug info.
-            if (PI[DebugInfo]) {
+            if (P[DebugInfo]) {
                 RayHeads[i].Debug+=to_string(1+i)+" --> ";
                 cout << '\n' << "Calculating   : " << RayHeads[i].Debug;
                 printf ("\nLocation      : %.15lf deg, %.15lf km (In region: %d)\n", RayHeads[i].Pt, RE-RayHeads[i].Pr,CurRegion);
@@ -465,14 +389,14 @@ int main(int argc, char **argv){
 
 
             // Print some debug info.
-            if (PI[DebugInfo]) {
+            if (P[DebugInfo]) {
                 if (NextRegion==-1) cout << "No region change." <<  endl;
                 else cout << "Next Region is    : " << NextRegion << " (for refraction)" << endl;
             }
 
 
             // Prepare reflection/refraction flags. (notice "rs" [r]eflection to [s]ame wave type is always possible)
-            bool ts=(PI[TS]==1),td=(PI[TD]==1 && RayHeads[i].Comp!="SH"),rd=(PI[RD]==1 && RayHeads[i].Comp!="SH");
+            bool ts=(P[TS]==1),td=(P[TD]==1 && RayHeads[i].Comp!="SH"),rd=(P[RD]==1 && RayHeads[i].Comp!="SH");
 
 
             // Locate the end of new leg, which is needed to calculate incident angle, coefficients, next ray parameter, etc.
@@ -534,7 +458,7 @@ int main(int argc, char **argv){
 
 
                 // Print some debug info.
-                if (PI[DebugInfo]) printf("Junction at       : %.15lf,%.15lf.\n",JuncPt,JuncPr);
+                if (P[DebugInfo]) printf("Junction at       : %.15lf,%.15lf.\n",JuncPt,JuncPr);
 
 
                 // Twick travel times and travel distance, compensate for the lost part.
@@ -585,7 +509,7 @@ int main(int argc, char **argv){
 
 
             // Print some debug info.
-            if (PI[DebugInfo]) {
+            if (P[DebugInfo]) {
                 printf("Incident angle    : %.15lf deg\n",Incident);
                 printf("Ray direction     : %.15lf deg\n",Rayd);
                 printf("Interface tilt    : %.15lf deg\n",TiltAngle);
@@ -625,8 +549,8 @@ int main(int argc, char **argv){
             if (vs2<0.01 && Mode[1]=='S') Mode[1]='L';
 
             // Print some debug info.
-            if (PI[DebugInfo]) printf("rho1/vp1/vs1      : %.15lf g/cm3, %.15lf km/sec, %.15lf km/sec\n",rho1,vp1,vs1);
-            if (PI[DebugInfo]) printf("rho2/vp2/vs2      : %.15lf g/cm3, %.15lf km/sec, %.15lf km/sec\n",rho2,vp2,vs2);
+            if (P[DebugInfo]) printf("rho1/vp1/vs1      : %.15lf g/cm3, %.15lf km/sec, %.15lf km/sec\n",rho1,vp1,vs1);
+            if (P[DebugInfo]) printf("rho2/vp2/vs2      : %.15lf g/cm3, %.15lf km/sec, %.15lf km/sec\n",rho2,vp2,vs2);
 
             complex<double> R_PP,R_PS,R_SP,R_SS,T_PP,T_PS,T_SP,T_SS;
             R_PP=R_PS=R_SP=R_SS=T_PP=T_PS=T_SP=T_SS=0;
@@ -738,7 +662,7 @@ int main(int argc, char **argv){
 
 
             // Print some debug info.
-            if (PI[DebugInfo]) {
+            if (P[DebugInfo]) {
                 printf("\nTakeOff angle (TS): %.15lf deg\n",Takeoff_ts);
                 printf("RayP          (TS): %.15lf\n",Rayp_ts);
                 printf("TakeOff angle (TD): %.15lf deg\n",Takeoff_td);
@@ -763,7 +687,7 @@ int main(int argc, char **argv){
 
             // Output valid part ray paths.
             ofstream fpout;
-            fpout.open(PS[OutFilePrefix]+to_string(i+1),ofstream::app);
+            fpout.open(P[OutFilePrefix]+to_string(i+1),ofstream::app);
             fpout << "> " << (RayHeads[i].Color=="black"?(RayHeads[i].IsP?"blue":"red"):RayHeads[i].Color) << " "
                           << (RayHeads[i].IsP?"P ":"S ") << RayHeads[i].TravelTime << " sec. " << RayHeads[i].Inc << " IncDeg. "
                           << RayHeads[i].Amp << " DispAmp. " << RayHeads[i].TravelDist << " km. " << endl;
@@ -773,9 +697,9 @@ int main(int argc, char **argv){
 
             // If ray reaches surface, output info at the surface.
             if (fabs(NextPr_R-RE)<MinInc) ++RayHeads[i].Surfacing;
-            if (fabs(NextPr_R-RE)<MinInc && (PI[StopAtSurface]==0 || RayHeads[i].Surfacing<2)) {
+            if (fabs(NextPr_R-RE)<MinInc && (P[StopAtSurface]==0 || RayHeads[i].Surfacing<2)) {
 
-                fpout.open(PS[ReceiverFile],ofstream::app);
+                fpout.open(P[ReceiverFile],ofstream::app);
 
                 if (PlotColorPosition.find(RayHeads[i].Color)==PlotColorPosition.end())
                     PlotColorPosition[RayHeads[i].Color]=PlotPosition++;
@@ -795,7 +719,7 @@ int main(int argc, char **argv){
                 for (auto rit=hh.rbegin();rit!=hh.rend();++rit) fpout << (RayHeads[*rit].IsP?(RayHeads[*rit].GoUp?"p":"P"):(RayHeads[*rit].GoUp?"s":"S")) << ((*rit)==*hh.begin()?" ":"->");
                 for (auto rit=hh.rbegin();rit!=hh.rend();++rit) fpout << (1+*rit) << ((*rit)==*hh.begin()?"\n":"->");
                 fpout.close();
-                if (PI[StopAtSurface]==1) continue;
+                if (P[StopAtSurface]==1) continue;
             }
 
 

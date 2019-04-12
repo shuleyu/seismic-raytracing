@@ -17,12 +17,13 @@ trap "rm -f ${WORKDIR}/tmpfile*$$ ${WORKDIR}/*_${RunNumber}; exit 1" SIGINT
 # ==============================================
 
 # C++ code.
-${EXECDIR}/TraceIt.out 5 8 1 << EOF
+${EXECDIR}/TraceIt.out 6 8 1 << EOF
 ${DebugInfo}
 ${TS}
 ${TD}
 ${RD}
 ${StopAtSurface}
+${nThread}
 ${WORKDIR}/tmpfile_InputRays_${RunNumber}
 ${WORKDIR}/tmpfile_LayerSetting_${RunNumber}
 ${WORKDIR}/tmpfile_KeyDepths_${RunNumber}
