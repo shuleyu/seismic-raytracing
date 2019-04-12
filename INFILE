@@ -4,7 +4,7 @@
 <BASHCODEDIR>         /home/shule/Research/Fun.Bash.c001
 <CPPCODEDIR>          /home/shule/Research/Fun.C++.c003
 
-<nThread>             4
+<nThread>             8
 
 # Outputs
 <DebugInfo>           0
@@ -42,7 +42,7 @@
 ## Begin Theta (deg)   |   Begin Depth (km)   |    TakeOffAngle (deg)   |    "P","SV" or "SH"    |     Coloring     |     Calculation steps.
 <InputRays_BEGIN>
 
-0    500    22    P    black     2
+0    500    22    P    black     6
 
 <InputRays_END>
 

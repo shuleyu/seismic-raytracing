@@ -4,7 +4,7 @@ COMP      := c++ -std=c++14 -Wall
 OUTDIR    := .
 INCDIR    := -I. -I$(CPPDIR)
 LIBDIR    := -L.
-LIBS      := -lm
+LIBS      := -lpthread -lm
 
 # all *cpp files
 SRCFILES  := $(wildcard *.cpp)
