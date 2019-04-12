@@ -9,6 +9,7 @@
 #include<map>
 #include<complex>
 #include<thread>
+#include<unistd.h>
 
 #include<CreateGrid.hpp>
 #include<LineJunction.hpp>
@@ -56,550 +57,559 @@ vector<double> MakeRef(const double &depth,const vector<vector<double>> &dev){
     return {vp,vs,rho};
 }
 
-void followThisRay(size_t w, size_t v, vector<Ray> &RayHeads, double RE, const vector<double> &SpecialDepths,
+void followThisRay(size_t i, size_t &Running, vector<Ray> &RayHeads, double RE, const vector<double> &SpecialDepths,
                    const vector<vector<double>> &R,const vector<vector<double>> &Vp,const vector<vector<double>> &Vs,const vector<vector<double>> &Rho,
                    double MinInc, const vector<vector<pair<double,double>>> &Regions,
                    const vector<double> &dVp, const vector<double> &dVs,const vector<double> &dRho,
                    double &PlotPosition,map<string,double> &PlotColorPosition){
 
-    for (size_t i=w;i<v;++i){
-
-        if (RayHeads[i].RemainingLegs==0) continue;
-
-        // Locate the begining and ending depths for the next leg.
-
-        /// ... among special depths.
-
-        //// Which special depth is cloest to ray head depth?
-        double RayHeadDepth=RE-RayHeads[i].Pr,NextDepth,MinDiff=RE+1;
-        size_t Cloest=0;
-        for (size_t j=0;j<SpecialDepths.size();++j) {
-            double CurDiff=fabs(SpecialDepths[j]-RayHeadDepth);
-            if (MinDiff>CurDiff) {MinDiff=CurDiff;Cloest=j;}
-        }
-
-        //// Next depth should be the cloest special depth, but more things needs to be considered:
-        //// Is the ray going up or down? Is the ray head already at the cloest special depth?
-        NextDepth=SpecialDepths[Cloest];
-        if ( RayHeads[i].GoUp && (SpecialDepths[Cloest]>RayHeadDepth || RayHeadDepth-SpecialDepths[Cloest]<MinInc) )
-            NextDepth=SpecialDepths[Cloest-1];
-        else if ( !RayHeads[i].GoUp && (SpecialDepths[Cloest]<RayHeadDepth || SpecialDepths[Cloest]-RayHeadDepth<MinInc) )
-            NextDepth=SpecialDepths[Cloest+1];
-
-        double Top=min(RayHeadDepth,NextDepth),Bot=max(RayHeadDepth,NextDepth);
-
-        /// ... among current 2D "Regions" vertical limits.
-        int CurRegion=RayHeads[i].InRegion;
-        Top=max(Top,RE-R[CurRegion][0]);
-        Bot=min(Bot,RE-R[CurRegion].back());
+    if (RayHeads[i].RemainingLegs==0) {
+        --Running;
+        return;
+    }
 
 
-        // Print some debug info.
-        if (P[DebugInfo]) {
-            RayHeads[i].Debug+=to_string(1+i)+" --> ";
-            cout << '\n' << "Calculating   : " << RayHeads[i].Debug;
-            printf ("\nLocation      : %.15lf deg, %.15lf km (In region: %d)\n", RayHeads[i].Pt, RE-RayHeads[i].Pr,CurRegion);
-            cout << "Will go as    : " << (RayHeads[i].IsP?"P, ":"S, ") << (RayHeads[i].GoUp?"Up, ":"Down, ")
-                 << (RayHeads[i].GoLeft?"Left":"Right") << endl;
-            printf ("Start, End (D): %.16lf --> %.16lf km\n",RayHeadDepth,NextDepth);
-            printf ("Actual s/e (D): %.16lf --> %.16lf km\n",Top,Bot);
-            printf ("Search between: %.16lf ~ %.16lf km with rayp  : %.16lf sec/deg\n",RE-R[CurRegion][0],RE-R[CurRegion].back(),RayHeads[i].RayP);
-            printf ("\n...\n\n");
-            cout << flush;
-        }
+    // Locate the begining and ending depths for the next leg.
+
+    /// ... among special depths.
+
+    //// Which special depth is cloest to ray head depth?
+    double RayHeadDepth=RE-RayHeads[i].Pr,NextDepth,MinDiff=RE+1;
+    size_t Cloest=0;
+    for (size_t j=0;j<SpecialDepths.size();++j) {
+        double CurDiff=fabs(SpecialDepths[j]-RayHeadDepth);
+        if (MinDiff>CurDiff) {MinDiff=CurDiff;Cloest=j;}
+    }
+
+    //// Next depth should be the cloest special depth, but more things needs to be considered:
+    //// Is the ray going up or down? Is the ray head already at the cloest special depth?
+    NextDepth=SpecialDepths[Cloest];
+    if ( RayHeads[i].GoUp && (SpecialDepths[Cloest]>RayHeadDepth || RayHeadDepth-SpecialDepths[Cloest]<MinInc) )
+        NextDepth=SpecialDepths[Cloest-1];
+    else if ( !RayHeads[i].GoUp && (SpecialDepths[Cloest]<RayHeadDepth || SpecialDepths[Cloest]-RayHeadDepth<MinInc) )
+        NextDepth=SpecialDepths[Cloest+1];
+
+    double Top=min(RayHeadDepth,NextDepth),Bot=max(RayHeadDepth,NextDepth);
+
+    /// ... among current 2D "Regions" vertical limits.
+    int CurRegion=RayHeads[i].InRegion;
+    Top=max(Top,RE-R[CurRegion][0]);
+    Bot=min(Bot,RE-R[CurRegion].back());
 
 
-        // Use ray-tracing code "RayPath".
-        size_t radius;
-        vector<double> degree;
-        const auto &v=(RayHeads[i].IsP?Vp:Vs);
-        auto ans=RayPath(R[CurRegion],v[CurRegion],RayHeads[i].RayP,Top,Bot,degree,radius,P[CriticalAngle]);
+    // Print some debug info.
+    if (P[DebugInfo]) {
+        RayHeads[i].Debug+=to_string(1+i)+" --> ";
+        cout << '\n' << "Calculating   : " << RayHeads[i].Debug;
+        printf ("\nLocation      : %.15lf deg, %.15lf km (In region: %d)\n", RayHeads[i].Pt, RE-RayHeads[i].Pr,CurRegion);
+        cout << "Will go as    : " << (RayHeads[i].IsP?"P, ":"S, ") << (RayHeads[i].GoUp?"Up, ":"Down, ")
+             << (RayHeads[i].GoLeft?"Left":"Right") << endl;
+        printf ("Start, End (D): %.16lf --> %.16lf km\n",RayHeadDepth,NextDepth);
+        printf ("Actual s/e (D): %.16lf --> %.16lf km\n",Top,Bot);
+        printf ("Search between: %.16lf ~ %.16lf km with rayp  : %.16lf sec/deg\n",RE-R[CurRegion][0],RE-R[CurRegion].back(),RayHeads[i].RayP);
+        printf ("\n...\n\n");
+        cout << flush;
+    }
 
 
-        // If the new leg is trivia, no further operation needed.
-        size_t RayLength=degree.size();
-        if (RayLength==1) {RayHeads[i].RemainingLegs=0;continue;}
+    // Use ray-tracing code "RayPath".
+    size_t radius;
+    vector<double> degree;
+    const auto &v=(RayHeads[i].IsP?Vp:Vs);
+    auto ans=RayPath(R[CurRegion],v[CurRegion],RayHeads[i].RayP,Top,Bot,degree,radius,P[CriticalAngle]);
 
 
-        // If the new leg is a reflection of down-going S to up-going P, and also the new leg turns, also mark it as invalid.
-        int PrevID=RayHeads[i].Prev;
-        if (PrevID!=-1 && !RayHeads[PrevID].GoUp && !RayHeads[PrevID].IsP && RayHeads[i].GoUp && RayHeads[i].IsP && ans.second) {
-            RayHeads[i].RemainingLegs=0;
-            continue;
-        }
+    // If the new leg is trivia, no further operation needed.
+    size_t RayLength=degree.size();
+    if (RayLength==1) {
+        RayHeads[i].RemainingLegs=0;
+        --Running;
+        return;
+    }
 
 
-        // Reverse the ray-tracing result of the next leg if next leg is going upward.
-        if (RayHeads[i].GoUp) {
-            double totalDist=degree.back();
-            for (auto &item:degree) item=totalDist-item;
-            reverse(degree.begin(),degree.end());
-        }
+    // If the new leg is a reflection of down-going S to up-going P, and also the new leg turns, also mark it as invalid.
+    int PrevID=RayHeads[i].Prev;
+    if (PrevID!=-1 && !RayHeads[PrevID].GoUp && !RayHeads[PrevID].IsP && RayHeads[i].GoUp && RayHeads[i].IsP && ans.second) {
+        RayHeads[i].RemainingLegs=0;
+        --Running;
+        return;
+    }
 
 
-        // Create a projection between layer index and ray index.
-        int up=(RayHeads[i].GoUp?1:-1);
-        auto rIndex = [RayLength,radius,up](size_t j){
-            if (up==1) return radius-j;
-            else return radius-RayLength+1+j;
-        };
+    // Reverse the ray-tracing result of the next leg if next leg is going upward.
+    if (RayHeads[i].GoUp) {
+        double totalDist=degree.back();
+        for (auto &item:degree) item=totalDist-item;
+        reverse(degree.begin(),degree.end());
+    }
 
 
-        // Follow the new ray path to see if the new leg enters another region.
-        int RayEnd=-1,NextRegion=-1,M=(RayHeads[i].GoLeft?-1:1);
+    // Create a projection between layer index and ray index.
+    int up=(RayHeads[i].GoUp?1:-1);
+    auto rIndex = [RayLength,radius,up](size_t j){
+        if (up==1) return radius-j;
+        else return radius-RayLength+1+j;
+    };
 
-        for (size_t j=0;j<degree.size();++j){
 
-            pair<double,double> p={RayHeads[i].Pt+M*degree[j],R[CurRegion][rIndex(j)]}; // point location on new leg.
+    // Follow the new ray path to see if the new leg enters another region.
+    int RayEnd=-1,NextRegion=-1,M=(RayHeads[i].GoLeft?-1:1);
 
-            if (CurRegion!=0){ // New leg starts in some 2D polygon ...
+    for (size_t j=0;j<degree.size();++j){
 
-                if (PointInPolygon(Regions[CurRegion],p)) continue; // ... and this point stays in that polygon.
-                else { // ... but this point enters another polygon.
+        pair<double,double> p={RayHeads[i].Pt+M*degree[j],R[CurRegion][rIndex(j)]}; // point location on new leg.
 
-                    RayEnd=j;
+        if (CurRegion!=0){ // New leg starts in some 2D polygon ...
 
-                    // which region is the new leg entering?
-                    for (size_t k=1;k<Regions.size();++k){
-                        if (PointInPolygon(Regions[k],p)) {
-                            NextRegion=k;
-                            break;
-                        }
-                    }
-                    if (NextRegion==-1) NextRegion=0; // if can't find next 2D polygons, it must return to the 1D reference region.
-                    break;
-                }
-            }
-            else { // New leg starts in 1D reference region. Search for the region it enters.
+            if (PointInPolygon(Regions[CurRegion],p)) continue; // ... and this point stays in that polygon.
+            else { // ... but this point enters another polygon.
+
+                RayEnd=j;
+
+                // which region is the new leg entering?
                 for (size_t k=1;k<Regions.size();++k){
-                    if (PointInPolygon(Regions[k],p)) { // If ray enters another region.
-                        RayEnd=j;
+                    if (PointInPolygon(Regions[k],p)) {
                         NextRegion=k;
                         break;
                     }
                 }
-                if (RayEnd!=-1) break; // If ray enters another region.
+                if (NextRegion==-1) NextRegion=0; // if can't find next 2D polygons, it must return to the 1D reference region.
+                break;
             }
         }
-
-
-        // Print some debug info.
-        if (P[DebugInfo]) {
-            if (NextRegion==-1) cout << "No region change." <<  endl;
-            else cout << "Next Region is    : " << NextRegion << " (for refraction)" << endl;
-        }
-
-
-        // Prepare reflection/refraction flags. (notice "rs" [r]eflection to [s]ame wave type is always possible)
-        bool ts=(P[TS]==1),td=(P[TD]==1 && RayHeads[i].Comp!="SH"),rd=(P[RD]==1 && RayHeads[i].Comp!="SH");
-
-
-        // Locate the end of new leg, which is needed to calculate incident angle, coefficients, next ray parameter, etc.
-        // (if interface is not horizontal("TiltAngle"), ray parameter will change.)
-        //
-        // Decision made: If the last line segment of the new leg crosses interface(at "JuncPt/JuncPr"),
-        // for reflection: the end point outside of new region ("NextP?_R") is the next ray starting point;
-        // for refraction: the end point inside of the new region ("NextP?_T") is the next ray starting piont.
-        double NextPt_R,NextPr_R,NextPt_T,NextPr_T,JuncPt,JuncPr,TiltAngle,Rayp_td=-1,Rayp_ts=-1,Rayp_rd=-1,Rayp_rs=-1;
-
-        pair<double,double> p2,q2; // Two end points of the last line segment of the new leg.
-                                   // Notice, for normal rays hit the horizontal interface, one end point is on the interface.
-
-        if (RayEnd!=-1){ // If ray ends pre-maturely (last line segment crossing the interface).
-
-            // For reflection, the future rays start from the last point in the current region (index: RayEnd-1).
-            NextPt_R=RayHeads[i].Pt+M*degree[RayEnd-1];
-            NextPr_R=R[CurRegion][rIndex(RayEnd-1)];
-
-
-            // For transmission/refraction, the futuer rays start from the first point in the next region (index: RayEnd).
-            NextPt_T=RayHeads[i].Pt+M*degree[RayEnd];
-            NextPr_T=R[CurRegion][rIndex(RayEnd)];
-
-
-            // Re-calculate travel distance and travel time till the last point in the current region.
-            ans.first.first=ans.first.second=0;
-            for (int j=0;j<RayEnd-1;++j){
-                double dist=sqrt( pow(R[CurRegion][rIndex(j)],2) + pow(R[CurRegion][rIndex(j+1)],2)
-                                  -2*R[CurRegion][rIndex(j)]*R[CurRegion][rIndex(j+1)]*cos(M_PI/180*(degree[j+1]-degree[j])) );
-                ans.first.second+=dist;
-                ans.first.first+=dist/v[CurRegion][rIndex(j+1)];
+        else { // New leg starts in 1D reference region. Search for the region it enters.
+            for (size_t k=1;k<Regions.size();++k){
+                if (PointInPolygon(Regions[k],p)) { // If ray enters another region.
+                    RayEnd=j;
+                    NextRegion=k;
+                    break;
+                }
             }
-
-
-            // Find the junction between the last line segment (index: RayEnd-1 ~ RayEnd) and polygon boundary segment (index: L1 ~ L2).
-            size_t L1,L2,SearchRegion=(NextRegion==0?CurRegion:NextRegion);
-            p2={NextPt_R,NextPr_R};
-            q2={NextPt_T,NextPr_T};
-
-            for (L1=0;L1<Regions[SearchRegion].size();++L1){ // Search around the polygon.
-                L2=(L1+1)%Regions[SearchRegion].size();
-                auto res=SegmentJunction(Regions[SearchRegion][L1],Regions[SearchRegion][L2],p2,q2);
-                if (res.first) break;
-            }
-            if (L1==Regions[SearchRegion].size())
-                throw runtime_error("!!!!!!!!!!! Can't find junction! Bugs here !!!!!!!!!!!");
-
-
-            // Find the junction point between ray and polygon boundary.
-            const pair<double,double> &p1=Regions[SearchRegion][L1],&q1=Regions[SearchRegion][L2];
-
-            double s1=(q1.second-p1.second)/(q1.first-p1.first),s2=(q2.second-p2.second)/(q2.first-p2.first);
-            auto junc=LineJunction(p1,s1,p2,s2);
-            JuncPt=junc.second.first;
-            JuncPr=junc.second.second;
-
-
-            // Print some debug info.
-            if (P[DebugInfo]) printf("Junction at       : %.15lf,%.15lf.\n",JuncPt,JuncPr);
-
-
-            // Twick travel times and travel distance, compensate for the lost part.
-            double dlx=(p2.first-JuncPt)*M_PI*JuncPr/180,dly=p2.second-JuncPr;
-            double dl=sqrt(dlx*dlx+dly*dly);
-            ans.first.second+=dl;
-            ans.first.first+=dl/v[CurRegion][rIndex(RayEnd-1)]; // Use the velocit within current region to avoid possible "inf" travel time.
-
-
-            // Get the geometry of the boundary.
-            TiltAngle=180/M_PI*atan2(q1.second-p1.second,(q1.first-p1.first)*M_PI/180*JuncPr);
-
+            if (RayEnd!=-1) break; // If ray enters another region.
         }
-        else { // If ray doesn't end pre-maturelly (stays in the same region and reflect/refract on horizontal intervals)
-               // (one end point of the last line segment (index: RayEnd-1) is on the interface)
-
-            RayEnd=degree.size();
-            NextRegion=CurRegion;
-
-            // Get futuer rays starting point.
-            NextPt_T=NextPt_R=RayHeads[i].Pt+M*degree[RayEnd-1];
-            NextPr_T=NextPr_R=R[CurRegion][rIndex(RayEnd-1)];
+    }
 
 
-            // Notice ray parameter doesn't change if reflection/refraction interface is horizontal.
-            Rayp_td=Rayp_ts=Rayp_rd=Rayp_rs=RayHeads[i].RayP;
+    // Print some debug info.
+    if (P[DebugInfo]) {
+        if (NextRegion==-1) cout << "No region change." <<  endl;
+        else cout << "Next Region is    : " << NextRegion << " (for refraction)" << endl;
+    }
 
 
-            // Get the last segment of the new leg.
-            p2={RayHeads[i].Pt+M*degree[RayEnd-2],R[CurRegion][rIndex(RayEnd-2)]};
-            q2={NextPt_T,NextPr_T};
-
-            // Get the geometry of the boundary.
-            TiltAngle=0;
-            JuncPt=NextPt_T;
-            JuncPr=NextPr_T;
-
-        } // End of dealing with rays entering another region.
+    // Prepare reflection/refraction flags. (notice "rs" [r]eflection to [s]ame wave type is always possible)
+    bool ts=(P[TS]==1),td=(P[TD]==1 && RayHeads[i].Comp!="SH"),rd=(P[RD]==1 && RayHeads[i].Comp!="SH");
 
 
-        // Get the geometry of the last section. (Ray direction: "Rayd" [-180 ~ 180])
-        double Rayd=180/M_PI*atan2(q2.second-p2.second,(q2.first-p2.first)*M_PI/180*JuncPr);
+    // Locate the end of new leg, which is needed to calculate incident angle, coefficients, next ray parameter, etc.
+    // (if interface is not horizontal("TiltAngle"), ray parameter will change.)
+    //
+    // Decision made: If the last line segment of the new leg crosses interface(at "JuncPt/JuncPr"),
+    // for reflection: the end point outside of new region ("NextP?_R") is the next ray starting point;
+    // for refraction: the end point inside of the new region ("NextP?_T") is the next ray starting piont.
+    double NextPt_R,NextPr_R,NextPt_T,NextPr_T,JuncPt,JuncPr,TiltAngle,Rayp_td=-1,Rayp_ts=-1,Rayp_rd=-1,Rayp_rs=-1;
+
+    pair<double,double> p2,q2; // Two end points of the last line segment of the new leg.
+                               // Notice, for normal rays hit the horizontal interface, one end point is on the interface.
+
+    if (RayEnd!=-1){ // If ray ends pre-maturely (last line segment crossing the interface).
+
+        // For reflection, the future rays start from the last point in the current region (index: RayEnd-1).
+        NextPt_R=RayHeads[i].Pt+M*degree[RayEnd-1];
+        NextPr_R=R[CurRegion][rIndex(RayEnd-1)];
 
 
-        // Calculate incident angle. (the acute angle between ray direction and the normal of interface)
-        double Rayd_Hor=Lon2360(Rayd-TiltAngle),Incident=fabs(Lon2180(Rayd_Hor));
-        Incident=(Incident>90?Incident-90:90-Incident);
+        // For transmission/refraction, the futuer rays start from the first point in the next region (index: RayEnd).
+        NextPt_T=RayHeads[i].Pt+M*degree[RayEnd];
+        NextPr_T=R[CurRegion][rIndex(RayEnd)];
+
+
+        // Re-calculate travel distance and travel time till the last point in the current region.
+        ans.first.first=ans.first.second=0;
+        for (int j=0;j<RayEnd-1;++j){
+            double dist=sqrt( pow(R[CurRegion][rIndex(j)],2) + pow(R[CurRegion][rIndex(j+1)],2)
+                              -2*R[CurRegion][rIndex(j)]*R[CurRegion][rIndex(j+1)]*cos(M_PI/180*(degree[j+1]-degree[j])) );
+            ans.first.second+=dist;
+            ans.first.first+=dist/v[CurRegion][rIndex(j+1)];
+        }
+
+
+        // Find the junction between the last line segment (index: RayEnd-1 ~ RayEnd) and polygon boundary segment (index: L1 ~ L2).
+        size_t L1,L2,SearchRegion=(NextRegion==0?CurRegion:NextRegion);
+        p2={NextPt_R,NextPr_R};
+        q2={NextPt_T,NextPr_T};
+
+        for (L1=0;L1<Regions[SearchRegion].size();++L1){ // Search around the polygon.
+            L2=(L1+1)%Regions[SearchRegion].size();
+            auto res=SegmentJunction(Regions[SearchRegion][L1],Regions[SearchRegion][L2],p2,q2);
+            if (res.first) break;
+        }
+        if (L1==Regions[SearchRegion].size())
+            throw runtime_error("!!!!!!!!!!! Can't find junction! Bugs here !!!!!!!!!!!");
+
+
+        // Find the junction point between ray and polygon boundary.
+        const pair<double,double> &p1=Regions[SearchRegion][L1],&q1=Regions[SearchRegion][L2];
+
+        double s1=(q1.second-p1.second)/(q1.first-p1.first),s2=(q2.second-p2.second)/(q2.first-p2.first);
+        auto junc=LineJunction(p1,s1,p2,s2);
+        JuncPt=junc.second.first;
+        JuncPr=junc.second.second;
 
 
         // Print some debug info.
-        if (P[DebugInfo]) {
-            printf("Incident angle    : %.15lf deg\n",Incident);
-            printf("Ray direction     : %.15lf deg\n",Rayd);
-            printf("Interface tilt    : %.15lf deg\n",TiltAngle);
+        if (P[DebugInfo]) printf("Junction at       : %.15lf,%.15lf.\n",JuncPt,JuncPr);
+
+
+        // Twick travel times and travel distance, compensate for the lost part.
+        double dlx=(p2.first-JuncPt)*M_PI*JuncPr/180,dly=p2.second-JuncPr;
+        double dl=sqrt(dlx*dlx+dly*dly);
+        ans.first.second+=dl;
+        ans.first.first+=dl/v[CurRegion][rIndex(RayEnd-1)]; // Use the velocit within current region to avoid possible "inf" travel time.
+
+
+        // Get the geometry of the boundary.
+        TiltAngle=180/M_PI*atan2(q1.second-p1.second,(q1.first-p1.first)*M_PI/180*JuncPr);
+
+    }
+    else { // If ray doesn't end pre-maturelly (stays in the same region and reflect/refract on horizontal intervals)
+           // (one end point of the last line segment (index: RayEnd-1) is on the interface)
+
+        RayEnd=degree.size();
+        NextRegion=CurRegion;
+
+        // Get futuer rays starting point.
+        NextPt_T=NextPt_R=RayHeads[i].Pt+M*degree[RayEnd-1];
+        NextPr_T=NextPr_R=R[CurRegion][rIndex(RayEnd-1)];
+
+
+        // Notice ray parameter doesn't change if reflection/refraction interface is horizontal.
+        Rayp_td=Rayp_ts=Rayp_rd=Rayp_rs=RayHeads[i].RayP;
+
+
+        // Get the last segment of the new leg.
+        p2={RayHeads[i].Pt+M*degree[RayEnd-2],R[CurRegion][rIndex(RayEnd-2)]};
+        q2={NextPt_T,NextPr_T};
+
+        // Get the geometry of the boundary.
+        TiltAngle=0;
+        JuncPt=NextPt_T;
+        JuncPr=NextPr_T;
+
+    } // End of dealing with rays entering another region.
+
+
+    // Get the geometry of the last section. (Ray direction: "Rayd" [-180 ~ 180])
+    double Rayd=180/M_PI*atan2(q2.second-p2.second,(q2.first-p2.first)*M_PI/180*JuncPr);
+
+
+    // Calculate incident angle. (the acute angle between ray direction and the normal of interface)
+    double Rayd_Hor=Lon2360(Rayd-TiltAngle),Incident=fabs(Lon2180(Rayd_Hor));
+    Incident=(Incident>90?Incident-90:90-Incident);
+
+
+    // Print some debug info.
+    if (P[DebugInfo]) {
+        printf("Incident angle    : %.15lf deg\n",Incident);
+        printf("Ray direction     : %.15lf deg\n",Rayd);
+        printf("Interface tilt    : %.15lf deg\n",TiltAngle);
+    }
+
+
+    // Prepare to calculate reflection/refractoin(transmission) coefficients.
+    string Mode,AdaptedMode,Polarity=(RayHeads[i].Comp=="SH"?"SH":"PSV");
+    if (fabs(RE-NextPr_R)<MinInc) Mode="SA"; // At the surface.
+    else if (fabs(3480-NextPr_R)<MinInc) Mode=(RayHeads[i].GoUp?"LS":"SL"); // At the CMB.
+    else if (fabs(1221.5-NextPr_R)<MinInc) Mode=(RayHeads[i].GoUp?"SL":"LS"); // At the ICB.
+    else if (1221.5<NextPr_R && NextPr_R<3480) Mode="LL";
+    else Mode="SS"; // AdaptedMode is for 2D regions with extreme S velocity drop.
+
+    double rho1,vp1,vs1,rho2,vp2,vs2,c1,c2;;
+
+    if (CurRegion!=NextRegion) { // if ray enters a different region.
+        rho1=Rho[CurRegion][rIndex(RayEnd-1)];
+        rho2=Rho[CurRegion][rIndex(RayEnd)]/dRho[CurRegion]*dRho[NextRegion];
+        vp1=Vp[CurRegion][rIndex(RayEnd-1)];
+        vp2=Vp[CurRegion][rIndex(RayEnd)]/dVp[CurRegion]*dVp[NextRegion];
+        vs1=Vs[CurRegion][rIndex(RayEnd-1)];
+        vs2=Vs[CurRegion][rIndex(RayEnd)]/dVs[CurRegion]*dVs[NextRegion];
+    }
+    else { // if ray stays in the same region. ray ends normally.
+        int si=RayEnd;
+        if (RayHeads[i].GoUp) --si;
+
+        rho1=Rho[CurRegion][rIndex(si-1)];
+        rho2=Rho[CurRegion][rIndex(si)];
+        vp1=Vp[CurRegion][rIndex(si-1)];
+        vp2=Vp[CurRegion][rIndex(si)];
+        vs1=Vs[CurRegion][rIndex(si-1)];
+        vs2=Vs[CurRegion][rIndex(si)];
+    }
+    if (vs1<0.01) Mode[0]='L';
+    if (vs2<0.01 && Mode[1]=='S') Mode[1]='L';
+
+    // Print some debug info.
+    if (P[DebugInfo]) printf("rho1/vp1/vs1      : %.15lf g/cm3, %.15lf km/sec, %.15lf km/sec\n",rho1,vp1,vs1);
+    if (P[DebugInfo]) printf("rho2/vp2/vs2      : %.15lf g/cm3, %.15lf km/sec, %.15lf km/sec\n",rho2,vp2,vs2);
+
+    complex<double> R_PP,R_PS,R_SP,R_SS,T_PP,T_PS,T_SP,T_SS;
+    R_PP=R_PS=R_SP=R_SS=T_PP=T_PS=T_SP=T_SS=0;
+
+    /// A. Refractions/Transmissions to the same wave type.
+
+    //// Coefficients. (T_PP,T_SS)
+    auto Coef=PlaneWaveCoefficients(rho1,vp1,vs1,rho2,vp2,vs2,Incident,Polarity,Mode);
+    if (Mode=="SS") {
+        if (RayHeads[i].Comp=="SH") T_SS=Coef[1];
+        else {T_PP=Coef[4];T_SS=Coef[7];}
+    }
+    if (Mode=="SL" && RayHeads[i].Comp=="P") T_PP=Coef[4];
+    if (Mode=="LS" && RayHeads[i].Comp=="P") T_PP=Coef[1];
+    if (Mode=="LL" && RayHeads[i].Comp=="P") T_PP=Coef[1];
+
+    if (RayHeads[i].IsP) ts&=(T_PP.imag()==0);
+    else ts&=(T_SS.imag()==0);
+
+    //// take-off angles.
+    if (RayHeads[i].IsP) {c1=vp1;c2=vp2;}
+    else {c1=vs1;c2=vs2;}
+
+    //// difference between incident angle and takeoff angle.
+    double Takeoff_ts=asin(sin(Incident*M_PI/180)*c2/c1)*180/M_PI-Incident;
+    ts&=!std::isnan(Takeoff_ts);
+
+    //// take 2D structure shape into consideration.
+    if ((0<Rayd_Hor && Rayd_Hor<=90) || (180<Rayd_Hor && Rayd_Hor<=270)) Takeoff_ts=Lon2180(Rayd_Hor-Takeoff_ts+TiltAngle+90);
+    else Takeoff_ts=Lon2180(Rayd_Hor+Takeoff_ts+TiltAngle+90);
+
+    //// new ray paramter.
+    if (CurRegion!=NextRegion) Rayp_ts=M_PI/180*NextPr_T*sin(fabs(Takeoff_ts)*M_PI/180)/c2;
+    ts&=!std::isnan(Rayp_ts);
+
+
+    /// B. Refractions/Transmissions to different wave type.
+
+    //// Coefficients. (T_PS,T_SP)
+    if (Mode=="SS" && RayHeads[i].Comp!="SH") {T_PS=Coef[1];T_SP=Coef[6];}
+    if (Mode=="SL" && RayHeads[i].Comp=="SV") T_SP=Coef[5];
+    if (Mode=="LS" && RayHeads[i].Comp=="P") T_PS=Coef[2];
+
+    if (RayHeads[i].IsP) td&=(T_PS.imag()==0);
+    else td&=(T_SP.imag()==0);
+
+    //// take-off angles.
+    if (RayHeads[i].IsP) {c1=vp1;c2=vs2;}
+    else {c1=vs1;c2=vp2;}
+
+    //// difference between incident angle and takeoff angle.
+    double Takeoff_td=asin(sin(Incident*M_PI/180)*c2/c1)*180/M_PI-Incident;
+    td&=!std::isnan(Takeoff_td);
+
+    //// take 2D structure shape into consideration.
+    if ((0<Rayd_Hor && Rayd_Hor<=90) || (180<Rayd_Hor && Rayd_Hor<=270)) Takeoff_td=Lon2180(Rayd_Hor-Takeoff_td+TiltAngle+90);
+    else Takeoff_td=Lon2180(Rayd_Hor+Takeoff_td+TiltAngle+90);
+
+    //// new ray paramter.
+    if (CurRegion!=NextRegion) Rayp_td=M_PI/180*NextPr_T*sin(fabs(Takeoff_td)*M_PI/180)/c2;
+    td&=!std::isnan(Rayp_td);
+
+
+    /// C. Reflection to a different wave type.
+
+    //// Coefficients. (R_PS,R_SP)
+    if (Mode=="SS" && RayHeads[i].Comp!="SH") {R_PS=Coef[1];R_SP=Coef[2];}
+    if (Mode=="SL" && RayHeads[i].Comp!="SH") {R_PS=Coef[1];R_SP=Coef[2];}
+    if (Mode=="SA" && RayHeads[i].Comp!="SH") {R_PS=Coef[1];R_SP=Coef[2];}
+
+    //// take-off angles.
+    c1=vs1;c2=vp1;
+    if (RayHeads[i].IsP) swap(c1,c2);
+
+    //// difference between incident angle and takeoff angle.
+    double Takeoff_rd=asin(sin(Incident*M_PI/180)*c2/c1)*180/M_PI-Incident;
+    rd&=!std::isnan(Takeoff_rd);
+
+    //// take 2D structure shape into consideration.
+    double x=Lon2360(-Rayd_Hor);
+    if ((0<x && x<=90) || (180<x && x<=270)) Takeoff_rd=Lon2180(x-Takeoff_rd+TiltAngle+90);
+    else Takeoff_rd=Lon2180(x+Takeoff_rd+TiltAngle+90);
+
+    //// new ray paramter.
+    if (CurRegion!=NextRegion) Rayp_rd=M_PI/180*NextPr_R*sin(fabs(Takeoff_rd)*M_PI/180)/c2;
+    rd&=!std::isnan(Rayp_rd);
+
+
+    /// D. reflection to a same wave type.
+    //// Coefficients. (R_PP,R_SS)
+    if (Mode=="SS") {
+        if (RayHeads[i].Comp=="SH") R_SS=Coef[0];
+        else {R_PP=Coef[0];R_SS=Coef[3];}
+    }
+    if (Mode=="SL") {
+        if (RayHeads[i].Comp=="SH") R_SS=1.0;
+        else {R_PP=Coef[0];R_SS=Coef[3];}
+    }
+    if (Mode=="SA") {
+        if (RayHeads[i].Comp=="SH") R_SS=1.0;
+        else {R_PP=Coef[0];R_SS=Coef[3];}
+    }
+    if ((Mode=="LS" || Mode=="LL") && RayHeads[i].Comp=="P") R_PP=Coef[0];
+    if (ans.second) R_SS=R_PP=1;
+
+    //// new ray paramter.
+    double Takeoff_rs=Lon2180(-Rayd_Hor+TiltAngle+90);
+    if (CurRegion!=NextRegion) Rayp_rs=M_PI/180*NextPr_R*sin(fabs(Takeoff_rs)*M_PI/180)/c1;
+
+
+    // Print some debug info.
+    if (P[DebugInfo]) {
+        printf("\nTakeOff angle (TS): %.15lf deg\n",Takeoff_ts);
+        printf("RayP          (TS): %.15lf\n",Rayp_ts);
+        printf("TakeOff angle (TD): %.15lf deg\n",Takeoff_td);
+        printf("RayP          (TD): %.15lf deg\n",Rayp_td);
+        printf("TakeOff angle (RD): %.15lf deg\n",Takeoff_rd);
+        printf("RayP          (RD): %.15lf deg\n",Rayp_rd);
+        printf("TakeOff angle (RS): %.15lf deg\n",Takeoff_rs);
+        printf("RayP          (RS): %.15lf deg\n\n",Rayp_rs);
+
+        cout << "RayEnd at Index  :" << RayEnd-1 << " (inclusive) / " << RayLength << endl;
+        printf ("RayEnd at    (R) :%.15lf deg, %.15lf (inclusive) km\n",NextPt_R,RE-NextPr_R);
+        printf ("RayEnd at    (T) :%.15lf deg, %.15lf (inclusive) km\n\n",NextPt_T,RE-NextPr_T);
+    }
+
+
+    // Update current RayHead.
+    RayHeads[i].TravelTime=ans.first.first;
+    RayHeads[i].TravelDist=ans.first.second;
+    --RayHeads[i].RemainingLegs;
+    RayHeads[i].Inc=Incident;
+
+
+    // Output valid part ray paths.
+    ofstream fpout;
+    fpout.open(P[OutFilePrefix]+to_string(i+1),ofstream::app);
+    fpout << "> " << (RayHeads[i].Color=="black"?(RayHeads[i].IsP?"blue":"red"):RayHeads[i].Color) << " "
+                  << (RayHeads[i].IsP?"P ":"S ") << RayHeads[i].TravelTime << " sec. " << RayHeads[i].Inc << " IncDeg. "
+                  << RayHeads[i].Amp << " DispAmp. " << RayHeads[i].TravelDist << " km. " << endl;
+    for (int j=0;j<RayEnd;++j)
+        fpout << RayHeads[i].Pt+M*degree[j] << " " << R[CurRegion][rIndex(j)] << '\n';
+    fpout.close();
+
+    // If ray reaches surface, output info at the surface.
+    if (fabs(NextPr_R-RE)<MinInc) ++RayHeads[i].Surfacing;
+    if (fabs(NextPr_R-RE)<MinInc && (P[StopAtSurface]==0 || RayHeads[i].Surfacing<2)) {
+
+        fpout.open(P[ReceiverFile],ofstream::app);
+
+        if (PlotColorPosition.find(RayHeads[i].Color)==PlotColorPosition.end())
+            PlotColorPosition[RayHeads[i].Color]=PlotPosition++;
+        fpout << PlotColorPosition[RayHeads[i].Color] << " ";
+
+        // Accumulate the travel-time.
+        int I=i;
+        double tt=0;
+        vector<int> hh;
+        while (I!=-1) {
+            hh.push_back(I);
+            tt+=RayHeads[I].TravelTime;
+            I=RayHeads[I].Prev;
         }
-
-
-        // Prepare to calculate reflection/refractoin(transmission) coefficients.
-        string Mode,AdaptedMode,Polarity=(RayHeads[i].Comp=="SH"?"SH":"PSV");
-        if (fabs(RE-NextPr_R)<MinInc) Mode="SA"; // At the surface.
-        else if (fabs(3480-NextPr_R)<MinInc) Mode=(RayHeads[i].GoUp?"LS":"SL"); // At the CMB.
-        else if (fabs(1221.5-NextPr_R)<MinInc) Mode=(RayHeads[i].GoUp?"SL":"LS"); // At the ICB.
-        else if (1221.5<NextPr_R && NextPr_R<3480) Mode="LL";
-        else Mode="SS"; // AdaptedMode is for 2D regions with extreme S velocity drop.
-
-        double rho1,vp1,vs1,rho2,vp2,vs2,c1,c2;;
-
-        if (CurRegion!=NextRegion) { // if ray enters a different region.
-            rho1=Rho[CurRegion][rIndex(RayEnd-1)];
-            rho2=Rho[CurRegion][rIndex(RayEnd)]/dRho[CurRegion]*dRho[NextRegion];
-            vp1=Vp[CurRegion][rIndex(RayEnd-1)];
-            vp2=Vp[CurRegion][rIndex(RayEnd)]/dVp[CurRegion]*dVp[NextRegion];
-            vs1=Vs[CurRegion][rIndex(RayEnd-1)];
-            vs2=Vs[CurRegion][rIndex(RayEnd)]/dVs[CurRegion]*dVs[NextRegion];
-        }
-        else { // if ray stays in the same region. ray ends normally.
-            int si=RayEnd;
-            if (RayHeads[i].GoUp) --si;
-
-            rho1=Rho[CurRegion][rIndex(si-1)];
-            rho2=Rho[CurRegion][rIndex(si)];
-            vp1=Vp[CurRegion][rIndex(si-1)];
-            vp2=Vp[CurRegion][rIndex(si)];
-            vs1=Vs[CurRegion][rIndex(si-1)];
-            vs2=Vs[CurRegion][rIndex(si)];
-        }
-        if (vs1<0.01) Mode[0]='L';
-        if (vs2<0.01 && Mode[1]=='S') Mode[1]='L';
-
-        // Print some debug info.
-        if (P[DebugInfo]) printf("rho1/vp1/vs1      : %.15lf g/cm3, %.15lf km/sec, %.15lf km/sec\n",rho1,vp1,vs1);
-        if (P[DebugInfo]) printf("rho2/vp2/vs2      : %.15lf g/cm3, %.15lf km/sec, %.15lf km/sec\n",rho2,vp2,vs2);
-
-        complex<double> R_PP,R_PS,R_SP,R_SS,T_PP,T_PS,T_SP,T_SS;
-        R_PP=R_PS=R_SP=R_SS=T_PP=T_PS=T_SP=T_SS=0;
-
-        /// A. Refractions/Transmissions to the same wave type.
-
-        //// Coefficients. (T_PP,T_SS)
-        auto Coef=PlaneWaveCoefficients(rho1,vp1,vs1,rho2,vp2,vs2,Incident,Polarity,Mode);
-        if (Mode=="SS") {
-            if (RayHeads[i].Comp=="SH") T_SS=Coef[1];
-            else {T_PP=Coef[4];T_SS=Coef[7];}
-        }
-        if (Mode=="SL" && RayHeads[i].Comp=="P") T_PP=Coef[4];
-        if (Mode=="LS" && RayHeads[i].Comp=="P") T_PP=Coef[1];
-        if (Mode=="LL" && RayHeads[i].Comp=="P") T_PP=Coef[1];
-
-        if (RayHeads[i].IsP) ts&=(T_PP.imag()==0);
-        else ts&=(T_SS.imag()==0);
-
-        //// take-off angles.
-        if (RayHeads[i].IsP) {c1=vp1;c2=vp2;}
-        else {c1=vs1;c2=vs2;}
-
-        //// difference between incident angle and takeoff angle.
-        double Takeoff_ts=asin(sin(Incident*M_PI/180)*c2/c1)*180/M_PI-Incident;
-        ts&=!std::isnan(Takeoff_ts);
-
-        //// take 2D structure shape into consideration.
-        if ((0<Rayd_Hor && Rayd_Hor<=90) || (180<Rayd_Hor && Rayd_Hor<=270)) Takeoff_ts=Lon2180(Rayd_Hor-Takeoff_ts+TiltAngle+90);
-        else Takeoff_ts=Lon2180(Rayd_Hor+Takeoff_ts+TiltAngle+90);
-
-        //// new ray paramter.
-        if (CurRegion!=NextRegion) Rayp_ts=M_PI/180*NextPr_T*sin(fabs(Takeoff_ts)*M_PI/180)/c2;
-        ts&=!std::isnan(Rayp_ts);
-
-
-        /// B. Refractions/Transmissions to different wave type.
-
-        //// Coefficients. (T_PS,T_SP)
-        if (Mode=="SS" && RayHeads[i].Comp!="SH") {T_PS=Coef[1];T_SP=Coef[6];}
-        if (Mode=="SL" && RayHeads[i].Comp=="SV") T_SP=Coef[5];
-        if (Mode=="LS" && RayHeads[i].Comp=="P") T_PS=Coef[2];
-
-        if (RayHeads[i].IsP) td&=(T_PS.imag()==0);
-        else td&=(T_SP.imag()==0);
-
-        //// take-off angles.
-        if (RayHeads[i].IsP) {c1=vp1;c2=vs2;}
-        else {c1=vs1;c2=vp2;}
-
-        //// difference between incident angle and takeoff angle.
-        double Takeoff_td=asin(sin(Incident*M_PI/180)*c2/c1)*180/M_PI-Incident;
-        td&=!std::isnan(Takeoff_td);
-
-        //// take 2D structure shape into consideration.
-        if ((0<Rayd_Hor && Rayd_Hor<=90) || (180<Rayd_Hor && Rayd_Hor<=270)) Takeoff_td=Lon2180(Rayd_Hor-Takeoff_td+TiltAngle+90);
-        else Takeoff_td=Lon2180(Rayd_Hor+Takeoff_td+TiltAngle+90);
-
-        //// new ray paramter.
-        if (CurRegion!=NextRegion) Rayp_td=M_PI/180*NextPr_T*sin(fabs(Takeoff_td)*M_PI/180)/c2;
-        td&=!std::isnan(Rayp_td);
-
-
-        /// C. Reflection to a different wave type.
-
-        //// Coefficients. (R_PS,R_SP)
-        if (Mode=="SS" && RayHeads[i].Comp!="SH") {R_PS=Coef[1];R_SP=Coef[2];}
-        if (Mode=="SL" && RayHeads[i].Comp!="SH") {R_PS=Coef[1];R_SP=Coef[2];}
-        if (Mode=="SA" && RayHeads[i].Comp!="SH") {R_PS=Coef[1];R_SP=Coef[2];}
-
-        //// take-off angles.
-        c1=vs1;c2=vp1;
-        if (RayHeads[i].IsP) swap(c1,c2);
-
-        //// difference between incident angle and takeoff angle.
-        double Takeoff_rd=asin(sin(Incident*M_PI/180)*c2/c1)*180/M_PI-Incident;
-        rd&=!std::isnan(Takeoff_rd);
-
-        //// take 2D structure shape into consideration.
-        double x=Lon2360(-Rayd_Hor);
-        if ((0<x && x<=90) || (180<x && x<=270)) Takeoff_rd=Lon2180(x-Takeoff_rd+TiltAngle+90);
-        else Takeoff_rd=Lon2180(x+Takeoff_rd+TiltAngle+90);
-
-        //// new ray paramter.
-        if (CurRegion!=NextRegion) Rayp_rd=M_PI/180*NextPr_R*sin(fabs(Takeoff_rd)*M_PI/180)/c2;
-        rd&=!std::isnan(Rayp_rd);
-
-
-        /// D. reflection to a same wave type.
-        //// Coefficients. (R_PP,R_SS)
-        if (Mode=="SS") {
-            if (RayHeads[i].Comp=="SH") R_SS=Coef[0];
-            else {R_PP=Coef[0];R_SS=Coef[3];}
-        }
-        if (Mode=="SL") {
-            if (RayHeads[i].Comp=="SH") R_SS=1.0;
-            else {R_PP=Coef[0];R_SS=Coef[3];}
-        }
-        if (Mode=="SA") {
-            if (RayHeads[i].Comp=="SH") R_SS=1.0;
-            else {R_PP=Coef[0];R_SS=Coef[3];}
-        }
-        if ((Mode=="LS" || Mode=="LL") && RayHeads[i].Comp=="P") R_PP=Coef[0];
-        if (ans.second) R_SS=R_PP=1;
-
-        //// new ray paramter.
-        double Takeoff_rs=Lon2180(-Rayd_Hor+TiltAngle+90);
-        if (CurRegion!=NextRegion) Rayp_rs=M_PI/180*NextPr_R*sin(fabs(Takeoff_rs)*M_PI/180)/c1;
-
-
-        // Print some debug info.
-        if (P[DebugInfo]) {
-            printf("\nTakeOff angle (TS): %.15lf deg\n",Takeoff_ts);
-            printf("RayP          (TS): %.15lf\n",Rayp_ts);
-            printf("TakeOff angle (TD): %.15lf deg\n",Takeoff_td);
-            printf("RayP          (TD): %.15lf deg\n",Rayp_td);
-            printf("TakeOff angle (RD): %.15lf deg\n",Takeoff_rd);
-            printf("RayP          (RD): %.15lf deg\n",Rayp_rd);
-            printf("TakeOff angle (RS): %.15lf deg\n",Takeoff_rs);
-            printf("RayP          (RS): %.15lf deg\n\n",Rayp_rs);
-
-            cout << "RayEnd at Index  :" << RayEnd-1 << " (inclusive) / " << RayLength << endl;
-            printf ("RayEnd at    (R) :%.15lf deg, %.15lf (inclusive) km\n",NextPt_R,RE-NextPr_R);
-            printf ("RayEnd at    (T) :%.15lf deg, %.15lf (inclusive) km\n\n",NextPt_T,RE-NextPr_T);
-        }
-
-
-        // Update current RayHead.
-        RayHeads[i].TravelTime=ans.first.first;
-        RayHeads[i].TravelDist=ans.first.second;
-        --RayHeads[i].RemainingLegs;
-        RayHeads[i].Inc=Incident;
-
-
-        // Output valid part ray paths.
-        ofstream fpout;
-        fpout.open(P[OutFilePrefix]+to_string(i+1),ofstream::app);
-        fpout << "> " << (RayHeads[i].Color=="black"?(RayHeads[i].IsP?"blue":"red"):RayHeads[i].Color) << " "
-                      << (RayHeads[i].IsP?"P ":"S ") << RayHeads[i].TravelTime << " sec. " << RayHeads[i].Inc << " IncDeg. "
-                      << RayHeads[i].Amp << " DispAmp. " << RayHeads[i].TravelDist << " km. " << endl;
-        for (int j=0;j<RayEnd;++j)
-            fpout << RayHeads[i].Pt+M*degree[j] << " " << R[CurRegion][rIndex(j)] << '\n';
+        fpout << RayHeads[hh.back()].Takeoff << " " << RayHeads[i].RayP << " " << RayHeads[i].Inc << " " << NextPt_R << " "
+              << tt << " " << RayHeads[i].Amp << " " << RayHeads[i].RemainingLegs << " ";
+        for (auto rit=hh.rbegin();rit!=hh.rend();++rit) fpout << (RayHeads[*rit].IsP?(RayHeads[*rit].GoUp?"p":"P"):(RayHeads[*rit].GoUp?"s":"S")) << ((*rit)==*hh.begin()?" ":"->");
+        for (auto rit=hh.rbegin();rit!=hh.rend();++rit) fpout << (1+*rit) << ((*rit)==*hh.begin()?"\n":"->");
         fpout.close();
-
-        // If ray reaches surface, output info at the surface.
-        if (fabs(NextPr_R-RE)<MinInc) ++RayHeads[i].Surfacing;
-        if (fabs(NextPr_R-RE)<MinInc && (P[StopAtSurface]==0 || RayHeads[i].Surfacing<2)) {
-
-            fpout.open(P[ReceiverFile],ofstream::app);
-
-            if (PlotColorPosition.find(RayHeads[i].Color)==PlotColorPosition.end())
-                PlotColorPosition[RayHeads[i].Color]=PlotPosition++;
-            fpout << PlotColorPosition[RayHeads[i].Color] << " ";
-
-            // Accumulate the travel-time.
-            int I=i;
-            double tt=0;
-            vector<int> hh;
-            while (I!=-1) {
-                hh.push_back(I);
-                tt+=RayHeads[I].TravelTime;
-                I=RayHeads[I].Prev;
-            }
-            fpout << RayHeads[hh.back()].Takeoff << " " << RayHeads[i].RayP << " " << RayHeads[i].Inc << " " << NextPt_R << " "
-                  << tt << " " << RayHeads[i].Amp << " " << RayHeads[i].RemainingLegs << " ";
-            for (auto rit=hh.rbegin();rit!=hh.rend();++rit) fpout << (RayHeads[*rit].IsP?(RayHeads[*rit].GoUp?"p":"P"):(RayHeads[*rit].GoUp?"s":"S")) << ((*rit)==*hh.begin()?" ":"->");
-            for (auto rit=hh.rbegin();rit!=hh.rend();++rit) fpout << (1+*rit) << ((*rit)==*hh.begin()?"\n":"->");
-            fpout.close();
-            if (P[StopAtSurface]==1) continue;
+        if (P[StopAtSurface]==1) {
+            --Running;
+            return;
         }
+    }
 
 
-        // Add rules of: (t)ransmission/refrection and (r)eflection to (s)ame or (d)ifferent way type.
-        // Notice reflection with the same wave type is always allowed. ("rs" is always true)
+    // Add rules of: (t)ransmission/refrection and (r)eflection to (s)ame or (d)ifferent way type.
+    // Notice reflection with the same wave type is always allowed. ("rs" is always true)
 
-        /// if ray going down and turns.
-        if (!RayHeads[i].GoUp && ans.second) ts=td=rd=false;
+    /// if ray going down and turns.
+    if (!RayHeads[i].GoUp && ans.second) ts=td=rd=false;
 
-        /// if ray ends at the surface.
-        if (fabs(RE-NextPr_R)<MinInc) ts=td=false;
+    /// if ray ends at the surface.
+    if (fabs(RE-NextPr_R)<MinInc) ts=td=false;
 
-        /// if ray goes down to CMB, no transmission S; if ray goes up to ICB, not transmission S.
-        if ((!RayHeads[i].GoUp && fabs(NextPr_T-3480)<MinInc) || (RayHeads[i].GoUp && fabs(NextPr_T-1221.5)<MinInc)) {
-            ts&=RayHeads[i].IsP;
-            td&=(!RayHeads[i].IsP);
-        }
+    /// if ray goes down to CMB, no transmission S; if ray goes up to ICB, not transmission S.
+    if ((!RayHeads[i].GoUp && fabs(NextPr_T-3480)<MinInc) || (RayHeads[i].GoUp && fabs(NextPr_T-1221.5)<MinInc)) {
+        ts&=RayHeads[i].IsP;
+        td&=(!RayHeads[i].IsP);
+    }
 
-        /// if ray goes down to ICB as P, no reflection S.
-        if (!RayHeads[i].GoUp && RayHeads[i].IsP && fabs(NextPr_R-1221.5)<MinInc) rd=false;
+    /// if ray goes down to ICB as P, no reflection S.
+    if (!RayHeads[i].GoUp && RayHeads[i].IsP && fabs(NextPr_R-1221.5)<MinInc) rd=false;
 
-        /// if ray goes up to CMB as P, no reflection S.
-        if (RayHeads[i].GoUp && RayHeads[i].IsP && fabs(NextPr_R-3480)<MinInc) rd=false;
+    /// if ray goes up to CMB as P, no reflection S.
+    if (RayHeads[i].GoUp && RayHeads[i].IsP && fabs(NextPr_R-3480)<MinInc) rd=false;
 
 
-        // Add new ray heads to "RayHeads" according to the rules ans reflection/refraction angle calculation results.
+    // Add new ray heads to "RayHeads" according to the rules ans reflection/refraction angle calculation results.
 
-        if (ts) {
-            Ray newRay=RayHeads[i];
-            newRay.Prev=i;
-            newRay.Pt=NextPt_T;
-            newRay.Pr=NextPr_T;
-            newRay.RayP=Rayp_ts;
-            newRay.GoUp=(fabs(Takeoff_ts)>90);
-            newRay.GoLeft=(Takeoff_ts<0);
-            newRay.InRegion=NextRegion;
-            newRay.Amp*=(newRay.IsP?T_PP.real():T_SS.real());
-            RayHeads.push_back(newRay);
-        }
-
-        if (td) {
-            Ray newRay=RayHeads[i];
-            newRay.IsP=!newRay.IsP;
-            newRay.Prev=i;
-            newRay.Pt=NextPt_T;
-            newRay.Pr=NextPr_T;
-            newRay.RayP=Rayp_td;
-            newRay.GoUp=(fabs(Takeoff_td)>90);
-            newRay.GoLeft=(Takeoff_td<0);
-            newRay.InRegion=NextRegion;
-            newRay.Amp*=(newRay.IsP?T_PS.real():T_SP.real());
-            RayHeads.push_back(newRay);
-        }
-
-        if (rd) {
-            Ray newRay=RayHeads[i];
-            newRay.IsP=!newRay.IsP;
-            newRay.Prev=i;
-            newRay.Pt=NextPt_R;
-            newRay.Pr=NextPr_R;
-            newRay.RayP=Rayp_rd;
-            newRay.GoUp=(fabs(Takeoff_rd)>90);
-            newRay.GoLeft=(Takeoff_rd<0);
-            double sign1=(R_PS.imag()==0?(R_PS.real()<0?-1:1):1);
-            double sign2=(R_SP.imag()==0?(R_SP.real()<0?-1:1):1);
-            newRay.Amp*=(newRay.IsP?(sign1*abs(R_PS)):(sign2*abs(R_SP)));
-            RayHeads.push_back(newRay);
-        }
-
-        // rs is always possible.
+    if (ts) {
         Ray newRay=RayHeads[i];
+        newRay.Prev=i;
+        newRay.Pt=NextPt_T;
+        newRay.Pr=NextPr_T;
+        newRay.RayP=Rayp_ts;
+        newRay.GoUp=(fabs(Takeoff_ts)>90);
+        newRay.GoLeft=(Takeoff_ts<0);
+        newRay.InRegion=NextRegion;
+        newRay.Amp*=(newRay.IsP?T_PP.real():T_SS.real());
+        RayHeads.push_back(newRay);
+    }
 
+    if (td) {
+        Ray newRay=RayHeads[i];
+        newRay.IsP=!newRay.IsP;
+        newRay.Prev=i;
+        newRay.Pt=NextPt_T;
+        newRay.Pr=NextPr_T;
+        newRay.RayP=Rayp_td;
+        newRay.GoUp=(fabs(Takeoff_td)>90);
+        newRay.GoLeft=(Takeoff_td<0);
+        newRay.InRegion=NextRegion;
+        newRay.Amp*=(newRay.IsP?T_PS.real():T_SP.real());
+        RayHeads.push_back(newRay);
+    }
+
+    if (rd) {
+        Ray newRay=RayHeads[i];
+        newRay.IsP=!newRay.IsP;
         newRay.Prev=i;
         newRay.Pt=NextPt_R;
         newRay.Pr=NextPr_R;
-        newRay.RayP=Rayp_rs;
-        newRay.GoUp=(fabs(Takeoff_rs)>90);
-        newRay.GoLeft=(Takeoff_rs<0);
-        double sign1=(R_PP.imag()==0?(R_PP.real()<0?-1:1):1);
-        double sign2=(R_SS.imag()==0?(R_SS.real()<0?-1:1):1);
-        newRay.Amp*=(newRay.IsP?(sign1*abs(R_PP)):(sign2*abs(R_SS)));
-
+        newRay.RayP=Rayp_rd;
+        newRay.GoUp=(fabs(Takeoff_rd)>90);
+        newRay.GoLeft=(Takeoff_rd<0);
+        double sign1=(R_PS.imag()==0?(R_PS.real()<0?-1:1):1);
+        double sign2=(R_SP.imag()==0?(R_SP.real()<0?-1:1):1);
+        newRay.Amp*=(newRay.IsP?(sign1*abs(R_PS)):(sign2*abs(R_SP)));
         RayHeads.push_back(newRay);
     }
+
+    // rs is always possible.
+    Ray newRay=RayHeads[i];
+
+    newRay.Prev=i;
+    newRay.Pt=NextPt_R;
+    newRay.Pr=NextPr_R;
+    newRay.RayP=Rayp_rs;
+    newRay.GoUp=(fabs(Takeoff_rs)>90);
+    newRay.GoLeft=(Takeoff_rs<0);
+    double sign1=(R_PP.imag()==0?(R_PP.real()<0?-1:1):1);
+    double sign2=(R_SS.imag()==0?(R_SS.real()<0?-1:1):1);
+    newRay.Amp*=(newRay.IsP?(sign1*abs(R_PP)):(sign2*abs(R_SS)));
+
+    RayHeads.push_back(newRay);
+    --Running;
     return;
 }
-
 
 
 int main(int argc, char **argv){
@@ -808,32 +818,28 @@ int main(int argc, char **argv){
     // For future legs generated by reflction/refraction, create new "Ray" and push to the end of "RayHeads" queue.
     double PlotPosition=1;
     map<string,double> PlotColorPosition;
+    vector<thread> allThread;
 
-    size_t QueueL=0,QueueR=RayHeads.size(); // Rays between [QueueL,QueueR) needs processing.
-//     size_t Done=0,Todo=RayHeads.size();
+    size_t Done=0,Running=0;
+    while (Done!=RayHeads.size() || Running!=0) {
 
-    while (QueueL!=QueueR) {
+        if (Running>=(size_t)P[nThread] || Done==RayHeads.size()) {
+            usleep(1000);
+        }
+        else {
+            ++Running;
 
-        vector<thread> allThread;
-
-        size_t w=QueueL,n=size_t(ceil(1.0*(QueueR-QueueL)/P[nThread]));
-        for (size_t i=0;i<(size_t)P[nThread];++i) {
-            allThread.push_back(thread(followThisRay,w,min(w+n,QueueR),std::ref(RayHeads),RE, std::cref(SpecialDepths),
-                                       std::cref(R),std::cref(Vp),std::cref(Vs),std::cref(Rho),MinInc,
-                                       std::cref(Regions),std::cref(dVp),std::cref(dVs),std::cref(dRho),
-                                       std::ref(PlotPosition),std::ref(PlotColorPosition)));
-            w+=n;
+            allThread.push_back(thread(followThisRay,Done++, std::ref(Running), std::ref(RayHeads), RE, std::cref(SpecialDepths),
+                                std::cref(R),std::cref(Vp),std::cref(Vs),std::cref(Rho),MinInc,
+                                std::cref(Regions),std::cref(dVp),std::cref(dVs),std::cref(dRho),
+                                std::ref(PlotPosition),std::ref(PlotColorPosition)));
         }
 
-        for (size_t i=0;i<(size_t)P[nThread];++i)
-            allThread[i].join();
-        allThread.clear();
-
-        // End of processing Rays between [QueueL,QueueR)
-        QueueL=QueueR;
-        QueueR=RayHeads.size();
-
     } // End of ray tracing.
+
+    for (auto &item: allThread) {
+        item.join();
+    }
 
     return 0;
 }
