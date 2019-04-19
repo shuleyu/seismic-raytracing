@@ -714,10 +714,10 @@ int main(int argc, char **argv){
                     for (size_t k=0;k<NPTS;++k) tmpregion2.push_back(make_pair(tmpregion[i].first+k*dT,tmpregion[i].second+k*dR));
                     tmpregion2.pop_back();
 
-                    ofstream fpout(P[PolygonOutPrefix]+to_string(Regions.size()));
-                    for (auto &item:tmpregion2) fpout << item.first << " " << item.second << '\n';
-                    fpout.close();
                 }
+                ofstream fpout(P[PolygonOutPrefix]+to_string(Regions.size()));
+                for (auto &item:tmpregion2) fpout << item.first << " " << item.second << '\n';
+                fpout.close();
                 Regions.push_back(tmpregion2);
 
                 // Use the reigon boundaries (minr,maxr) to derive layers around the region.
@@ -840,6 +840,8 @@ int main(int argc, char **argv){
     for (auto &item: allThread) {
         item.join();
     }
+
+    cout << RayHeads.size() << endl;
 
     return 0;
 }

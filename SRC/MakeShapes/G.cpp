@@ -13,8 +13,8 @@ using namespace std;
 
 int main(){
 
-    double X0=29.234,Y0=2891;
-    double dt=0.005,L=7.5,H=25,sigma=2.35482;
+    double X0=31.226,Y0=2891;
+    double dt=0.005,L=7.5,H=7.5,sigma=0.8493218;
 
     vector<double> A;
     for (size_t i=0;i<L/dt;++i){
