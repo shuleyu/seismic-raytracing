@@ -57,6 +57,7 @@ vector<double> MakeRef(const double &depth,const vector<vector<double>> &dev){
     return {vp,vs,rho};
 }
 
+// generating rays birthed from Rayheads[i]
 void followThisRay(size_t i, size_t &Running, vector<Ray> &RayHeads, double RE, const vector<double> &SpecialDepths,
                    const vector<vector<double>> &R,const vector<vector<double>> &Vp,const vector<vector<double>> &Vs,const vector<vector<double>> &Rho,
                    double MinInc, const vector<vector<pair<double,double>>> &Regions,
@@ -612,6 +613,7 @@ void followThisRay(size_t i, size_t &Running, vector<Ray> &RayHeads, double RE, 
 }
 
 
+// dealt with inputs.
 int main(int argc, char **argv){
 
     P=ReadParameters<PI,PS,PF> (argc,argv,cin,FLAG1,FLAG2,FLAG3);
@@ -623,11 +625,11 @@ int main(int argc, char **argv){
 
     ifstream fpin(P[Layers]);
     fpin >> prev_depth >> inc;
-    MinInc=inc; // Record the minimum layer increment for later use. (Solve round-off error related issues)
+    MinInc=inc; // Record the minimum layer increment for later use. (To solve floating point number round-off-error-related issues)
 
     while (fpin >> depth >> next_inc){
 
-        auto tmpr=CreateGrid(RE-depth+1e-6,RE-prev_depth+1e-6,inc,2); // +1e-6 here to solve round-off error related issues;
+        auto tmpr=CreateGrid(RE-depth+1e-6,RE-prev_depth+1e-6,inc,2); // +1e-6 here to solve round-off-error-related issues;
                                                                       // this will also affects our choice when calculating coefficients.
                                                                       // See the definition of variable "si".
 
@@ -667,7 +669,7 @@ int main(int argc, char **argv){
 
 
     // Read in special depths (force reflection & refraction at these depths).
-    vector<double> SpecialDepths;
+    vector<double> SpecialDepths{0,2891,5149.5,6371};
     fpin.open(P[Depths]);
     while (fpin >> depth) SpecialDepths.push_back(depth);
     sort(SpecialDepths.begin(),SpecialDepths.end()); // sort it ascending.
@@ -825,23 +827,23 @@ int main(int argc, char **argv){
 
         if (Running>=(size_t)P[nThread] || Done==RayHeads.size()) {
             usleep(1000);
+cout << "Waiting ... " << endl;
         }
         else {
             ++Running;
 
+cout << "Failed to start a new" << endl;
             allThread.push_back(thread(followThisRay,Done++, std::ref(Running), std::ref(RayHeads), RE, std::cref(SpecialDepths),
                                 std::cref(R),std::cref(Vp),std::cref(Vs),std::cref(Rho),MinInc,
                                 std::cref(Regions),std::cref(dVp),std::cref(dVs),std::cref(dRho),
                                 std::ref(PlotPosition),std::ref(PlotColorPosition)));
+cout << "Failed to end." << endl;
         }
 
     } // End of ray tracing.
 
-    for (auto &item: allThread) {
+    for (auto &item: allThread)
         item.join();
-    }
-
-    cout << RayHeads.size() << endl;
 
     return 0;
 }

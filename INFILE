@@ -1,4 +1,3 @@
-
 # Directories.
 <WORKDIR>             /home/shule/PROJ/t058.RayTracing_2D
 <BASHCODEDIR>         /home/shule/Research/Fun.Bash.c001
@@ -22,8 +21,8 @@
 ## switches: (R)eflection/(T)ransmission to (S)ame/(D)ifferent wave types (P or S)
 
 <TS>                  1
-<TD>                  0
-<RD>                  0
+<TD>                  1
+<RD>                  1
 
                       -- Choose to supress unwanted rays.
                       TD: transmission, Difference wave-type (if possible).
@@ -42,19 +41,11 @@
 ## Begin Theta (deg)   |   Begin Depth (km)   |    TakeOffAngle (deg)   |    "P","SV" or "SH"    |     Coloring     |     Calculation steps.
 <InputRays_BEGIN>
 
-0    500    22    SH    black     6
-0    500    22.25    SH    black     6
-0    500    22.5    SH    black     6
-0    500    22.75    SH    black     6
-0    500    23    SH    black     6
-0    500    23.25    SH    black     6
-0    500    23.5    SH    black     6
-0    500    23.75    SH    black     6
-0    500    24    SH    black     6
+
+0    500     12.10   SV    black     6
+0    500     12.11   SV    black     6
 
 <InputRays_END>
-
-
 
 ## Layer settings (in km).
 ## Will create velocity grid using these parameters.
@@ -67,7 +58,7 @@
 
 0          0.1
 800        0.1
-2851       0.01
+2850       0.01
 2895       0.1
 5049.5     0.1
 5249.5     0.1
@@ -77,15 +68,13 @@
 
 
 ## Force reflection/transmission depth.
-## Will mannually do reflection,transmission at these depths.
-## Otherwise will only do transmission to same wave type (keep P or S).
+## Will mannually do reflection,transmission at these depths (restricted by flags).
 ##
 ## 1 column:
 ## depths (km).
 <KeyDepths_BEGIN>
 
-0
-2891
+2851
 
 <KeyDepths_END>
 
@@ -101,6 +90,8 @@
 ## PREM deviation begin depth |  dVp (%)   |   dVs (%)   |   dRho (%)
 <1DRef_BEGIN>
 
+2851    -10    -30   10
+2891      0     0    0
 
 <1DRef_END>
 
@@ -122,6 +113,8 @@
 ##
 ## >  !!! Seal this section with a ">" (the last region is not used) !!!
 <Polygons_BEGIN>
+
+<Polygons_END>
 
 > 0 -23 0
 
@@ -1630,7 +1623,6 @@
 
 >
 
-<Polygons_END>
 
 # Plotting.
 
@@ -1643,8 +1635,8 @@
 ## plotsize (inches at diameter of the earth)  |  theta (in deg)   |   depth(km)
 <PlotWhere_BEGIN>
 
-150    31.226           2891
-14     31.226           2891
+500    12.03           2891
+7    12.03           2891
 
 <PlotWhere_END>
 
