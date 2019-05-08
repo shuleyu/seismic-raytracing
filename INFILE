@@ -44,8 +44,73 @@
 
 0    500     12.10   SV    black     6
 0    500     12.11   SV    black     6
+0    500     12.12   SV    black     6
+0    500     12.13   SV    black     6
+0    500     12.14   SV    black     6
+0    500     12.15   SV    black     6
+0    500     12.16   SV    black     6
+0    500     12.17   SV    black     6
+0    500     12.18   SV    black     6
+0    500     12.19   SV    black     6
+0    500     12.20   SV    black     6
+0    500     12.21   SV    black     6
+0    500     12.22   SV    black     6
+0    500     12.23   SV    black     6
+0    500     12.24   SV    black     6
+0    500     12.25   SV    black     6
+0    500     12.26   SV    black     6
+0    500     12.27   SV    black     6
+0    500     12.28   SV    black     6
+0    500     12.29   SV    black     6
+0    500     12.30   SV    black     6
+0    500     12.31   SV    black     6
+0    500     12.32   SV    black     6
+0    500     12.33   SV    black     6
+0    500     12.34   SV    black     6
+0    500     12.35   SV    black     6
+0    500     12.36   SV    black     6
+0    500     12.37   SV    black     6
+0    500     12.38   SV    black     6
+0    500     12.39   SV    black     6
+0    500     12.40   SV    black     6
+0    500     12.41   SV    black     6
+0    500     12.42   SV    black     6
+0    500     12.43   SV    black     6
+0    500     12.44   SV    black     6
+0    500     12.45   SV    black     6
+0    500     12.46   SV    black     6
+0    500     12.47   SV    black     6
+0    500     12.48   SV    black     6
+0    500     12.49   SV    black     6
+0    500     12.50   SV    black     6
+0    500     12.51   SV    black     6
+0    500     12.52   SV    black     6
+0    500     12.53   SV    black     6
+0    500     12.54   SV    black     6
+0    500     12.55   SV    black     6
+0    500     12.56   SV    black     6
+0    500     12.57   SV    black     6
+0    500     12.58   SV    black     6
+0    500     12.59   SV    black     6
+0    500     12.60   SV    black     6
+0    500     12.61   SV    black     6
+0    500     12.62   SV    black     6
+0    500     12.63   SV    black     6
+0    500     12.64   SV    black     6
+0    500     12.65   SV    black     6
+0    500     12.66   SV    black     6
+0    500     12.67   SV    black     6
+0    500     12.68   SV    black     6
+0    500     12.69   SV    black     6
+0    500     12.70   SV    black     6
+0    500     12.71   SV    black     6
+0    500     12.72   SV    black     6
+0    500     12.73   SV    black     6
+0    500     12.74   SV    black     6
+0    500     12.75   SV    black     6
 
 <InputRays_END>
+
 
 ## Layer settings (in km).
 ## Will create velocity grid using these parameters.

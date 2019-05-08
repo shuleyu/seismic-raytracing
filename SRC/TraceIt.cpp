@@ -9,6 +9,7 @@
 #include<map>
 #include<complex>
 #include<thread>
+#include<atomic>
 #include<unistd.h>
 
 #include<CreateGrid.hpp>
@@ -38,6 +39,7 @@ class Ray {
         int InRegion,Prev,RemainingLegs,Surfacing;
         double Pt,Pr,TravelTime,TravelDist,RayP,Amp,Inc,Takeoff;
 
+        Ray()=default;
         Ray(bool p, bool g, bool l, string c, string cmp, int i,int rl, double th, double r, double t, double d, double rp,double to) :
             IsP(p), GoUp(g), GoLeft(l), Color(c), Comp(cmp), Debug(""), InRegion(i), Prev(-1), RemainingLegs(rl), Surfacing(0), Pt(th),Pr(r),TravelTime(t),TravelDist(d), RayP(rp), Amp(1),Inc(0), Takeoff(to) {}
 };
@@ -57,15 +59,15 @@ vector<double> MakeRef(const double &depth,const vector<vector<double>> &dev){
     return {vp,vs,rho};
 }
 
-// generating rays birthed from Rayheads[i]
-void followThisRay(size_t i, size_t &Running, vector<Ray> &RayHeads, double RE, const vector<double> &SpecialDepths,
+// generating rays birthed from RayHeads[i]
+void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<size_t> &Running, vector<Ray> &RayHeads, double RE, const vector<double> &SpecialDepths,
                    const vector<vector<double>> &R,const vector<vector<double>> &Vp,const vector<vector<double>> &Vs,const vector<vector<double>> &Rho,
                    double MinInc, const vector<vector<pair<double,double>>> &Regions,
                    const vector<double> &dVp, const vector<double> &dVs,const vector<double> &dRho,
                    double &PlotPosition,map<string,double> &PlotColorPosition){
 
     if (RayHeads[i].RemainingLegs==0) {
-        --Running;
+        Running.fetch_sub(1);
         return;
     }
 
@@ -124,7 +126,7 @@ void followThisRay(size_t i, size_t &Running, vector<Ray> &RayHeads, double RE, 
     size_t RayLength=degree.size();
     if (RayLength==1) {
         RayHeads[i].RemainingLegs=0;
-        --Running;
+        Running.fetch_sub(1);
         return;
     }
 
@@ -133,7 +135,7 @@ void followThisRay(size_t i, size_t &Running, vector<Ray> &RayHeads, double RE, 
     int PrevID=RayHeads[i].Prev;
     if (PrevID!=-1 && !RayHeads[PrevID].GoUp && !RayHeads[PrevID].IsP && RayHeads[i].GoUp && RayHeads[i].IsP && ans.second) {
         RayHeads[i].RemainingLegs=0;
-        --Running;
+        Running.fetch_sub(1);
         return;
     }
 
@@ -522,7 +524,7 @@ void followThisRay(size_t i, size_t &Running, vector<Ray> &RayHeads, double RE, 
         for (auto rit=hh.rbegin();rit!=hh.rend();++rit) fpout << (1+*rit) << ((*rit)==*hh.begin()?"\n":"->");
         fpout.close();
         if (P[StopAtSurface]==1) {
-            --Running;
+            Running.fetch_sub(1);
             return;
         }
     }
@@ -562,7 +564,7 @@ void followThisRay(size_t i, size_t &Running, vector<Ray> &RayHeads, double RE, 
         newRay.GoLeft=(Takeoff_ts<0);
         newRay.InRegion=NextRegion;
         newRay.Amp*=(newRay.IsP?T_PP.real():T_SS.real());
-        RayHeads.push_back(newRay);
+        RayHeads[Cnt.fetch_add(1)]=newRay;
     }
 
     if (td) {
@@ -576,7 +578,7 @@ void followThisRay(size_t i, size_t &Running, vector<Ray> &RayHeads, double RE, 
         newRay.GoLeft=(Takeoff_td<0);
         newRay.InRegion=NextRegion;
         newRay.Amp*=(newRay.IsP?T_PS.real():T_SP.real());
-        RayHeads.push_back(newRay);
+        RayHeads[Cnt.fetch_add(1)]=newRay;
     }
 
     if (rd) {
@@ -591,7 +593,7 @@ void followThisRay(size_t i, size_t &Running, vector<Ray> &RayHeads, double RE, 
         double sign1=(R_PS.imag()==0?(R_PS.real()<0?-1:1):1);
         double sign2=(R_SP.imag()==0?(R_SP.real()<0?-1:1):1);
         newRay.Amp*=(newRay.IsP?(sign1*abs(R_PS)):(sign2*abs(R_SP)));
-        RayHeads.push_back(newRay);
+        RayHeads[Cnt.fetch_add(1)]=newRay;
     }
 
     // rs is always possible.
@@ -607,8 +609,8 @@ void followThisRay(size_t i, size_t &Running, vector<Ray> &RayHeads, double RE, 
     double sign2=(R_SS.imag()==0?(R_SS.real()<0?-1:1):1);
     newRay.Amp*=(newRay.IsP?(sign1*abs(R_PP)):(sign2*abs(R_SS)));
 
-    RayHeads.push_back(newRay);
-    --Running;
+    RayHeads[Cnt.fetch_add(1)]=newRay;
+    Running.fetch_sub(1);
     return;
 }
 
@@ -791,9 +793,15 @@ int main(int argc, char **argv){
     string color,phase;
     double theta,takeoff;
     vector<Ray> RayHeads;
+    size_t potentialSize=0;
 
     fpin.open(P[InputRays]);
     while (fpin >> theta >> depth >> takeoff >> phase >> color >> steps){
+        if (!P[TS] && !P[TD] && !P[RD]) potentialSize+=steps;
+        else {
+            int q=1+P[TS]+P[TD]+P[RD];
+            potentialSize+=(1-pow(q,steps))/(1-q);
+        }
 
         // Source in any polygons?
         int rid=0;
@@ -809,6 +817,14 @@ int main(int argc, char **argv){
     }
     fpin.close();
 
+    if (potentialSize>RayHeads.max_size())
+        throw runtime_error("Too many rays to handle: decrease the number of legs or the number of input rays...");
+
+    atomic<size_t> Cnt;
+    Cnt.store(RayHeads.size());
+    RayHeads.resize(potentialSize);
+
+
     fpout.open(P[ReceiverFile]);
     fpout << "<TextHeight> <Takeoff> <Rayp> <Incident> <Dist> <TravelTime> <DispAmp> <RemainingLegs> <WaveTypeTrain> <RayTrain>" << '\n';
     fpout.close();
@@ -822,28 +838,26 @@ int main(int argc, char **argv){
     map<string,double> PlotColorPosition;
     vector<thread> allThread;
 
-    size_t Done=0,Running=0;
-    while (Done!=RayHeads.size() || Running!=0) {
+    size_t Done=0;
+    atomic<size_t> Running;
+    Running.store(0);
+    while (Done!=Cnt.load() || Running.load()!=0) {
 
-        if (Running>=(size_t)P[nThread] || Done==RayHeads.size()) {
-            usleep(1000);
-cout << "Waiting ... " << endl;
-        }
-        else {
-            ++Running;
-
-cout << "Failed to start a new" << endl;
-            allThread.push_back(thread(followThisRay,Done++, std::ref(Running), std::ref(RayHeads), RE, std::cref(SpecialDepths),
+        if (Running.load()<(size_t)P[nThread] && Done<Cnt.load()) {
+            Running.fetch_add(1);
+            allThread.push_back(thread(followThisRay,Done++, std::ref(Cnt), std::ref(Running), std::ref(RayHeads), RE, std::cref(SpecialDepths),
                                 std::cref(R),std::cref(Vp),std::cref(Vs),std::cref(Rho),MinInc,
                                 std::cref(Regions),std::cref(dVp),std::cref(dVs),std::cref(dRho),
                                 std::ref(PlotPosition),std::ref(PlotColorPosition)));
-cout << "Failed to end." << endl;
         }
+        else usleep(1000); 
 
     } // End of ray tracing.
 
     for (auto &item: allThread)
         item.join();
+
+cout << Cnt.load() << "/" << RayHeads.capacity() << endl;
 
     return 0;
 }
