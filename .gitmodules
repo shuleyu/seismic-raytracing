@@ -1,0 +1,4 @@
+[submodule "SRC/CPP-Library"]
+	path = SRC/CPP-Library
+	url = https://github.com/shuleyu/CPP-Library.git
+	branch = master
