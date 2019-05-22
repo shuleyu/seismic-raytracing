@@ -1,7 +1,6 @@
 # Directories.
 <WORKDIR>             /home/shule/PROJ/t058.RayTracing_2D
 <BASHCODEDIR>         /home/shule/Research/Fun.Bash.c001
-<CPPCODEDIR>          /home/shule/Research/Fun.C++.c003
 
 <nThread>             7
 

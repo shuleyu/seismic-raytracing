@@ -1,4 +1,11 @@
-# raytracing
+# Install
+$ git clone --recursive https://github.com/shuleyu/seismic-raytracing.git
+If "--recursive" is not added, the dependencies will not be cloned. In such cases do:
+$ cd ./seismic-raytracing
+$ git submodule update --init --recursive
+
+# Input file
+# Run the code
 seismology 2D ray tracing. Use polygons to represent 2D regions.
 
 Edit INFILE, execute Run.sh. Dependencies should be here: https://github.com/shuleyu/CPP-Library.

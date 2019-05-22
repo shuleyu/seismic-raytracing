@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================
-# This script calculate the 1D ray-tracing result.
+# This script runs the 2D ray-tracing program.
 #
 # Shule Yu
 # Spet 11 2014

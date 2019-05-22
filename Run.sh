@@ -88,7 +88,7 @@ mkdir -p ${PLOTDIR}
 trap "rm -f ${WORKDIR}/*_$$; exit 1" SIGINT
 
 cd ${SRCDIR}
-make OUTDIR=${EXECDIR} CPPDIR=${CPPCODEDIR}
+make OUTDIR=${EXECDIR}
 [ $? -ne 0 ] && rm -f ${WORKDIR}/*_$$ && exit 1
 
 echo "Compile finished...running..."
