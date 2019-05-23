@@ -25,6 +25,8 @@ Specify which task(s) to execute. Use `#` to comment out unwanted tasks.
 $ vim ./LIST.sh
 ```
 
+For now, there's two tasks `a01` (calculation) and `b01` (plotting using GMT4).
+
 # Execution file (Run.sh)
 When INFILE and LIST.sh are properly set, run this script:
 
