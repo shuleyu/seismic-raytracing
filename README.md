@@ -3,11 +3,7 @@
 $ git clone --recursive https://github.com/shuleyu/seismic-raytracing.git
 ```
 
-If
-```
---recursive
-```
-is not added, the dependencies will not be downloaded. In such case, do:
+If `--recursive` is not added, the dependencies will not be downloaded. In such case, do:
 
 ```
 $ cd ./seismic-raytracing
@@ -36,9 +32,18 @@ When INFILE and LIST.sh are properly set, run this script:
 $ bash ./Run.sh
 ```
 
+Run.sh will try to compile the code and run the task listed in LIST.sh using the parameters in INFILE.
+
+With a proper WORKDIR (and gmt4 installed), by default parameters in INFILE, it should calculate the following example case and produce the example figure.
+
 # Example
-A ScS reflection on an ellipse-shaped low velocity structure on the core mantle boundary:
+A ScS reflection on an ellipse-shaped low velocity structure on the core mantle boundary; ray is coming from left hand side:
+
+![alt text](https://github.com/shuleyu/raytracing/blob/master/SRC/example1.png)
+
+Green lines for polarity change. Line width are comparable to displacement amplitude.
+
+Multiple ScS reflection on this structure (varying takeoff angle):
 
 ![alt text](https://github.com/shuleyu/raytracing/blob/master/SRC/example2.png)
 
-Ray is coming from left hand side. Green lines for polarity change. Line width represent displacement amplitude.

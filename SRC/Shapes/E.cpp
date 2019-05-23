@@ -11,7 +11,7 @@ using namespace std;
 int main(){
 
     ofstream fpout("Ellipse");
-    double A=1,B=30,X0=34.1265,Y0=2891;
+    double A=1,B=30,X0=30,Y0=2891;
     for (double x=-A;x<=A;x+=0.005){
         fpout << x+X0 << " " << Y0-sqrt((1-x*x/A/A)*B*B) << '\n';
     }
