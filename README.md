@@ -1,7 +1,7 @@
 # Download and Install
-'''
+```
 $ git clone --recursive https://github.com/shuleyu/seismic-raytracing.git
-'''
+```
 
 If "--recursive" is not added, the dependencies will not be downloaded. In such case, do:
 
