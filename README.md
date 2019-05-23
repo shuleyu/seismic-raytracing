@@ -52,7 +52,7 @@ With a proper WORKDIR and using the default parameters in INFILE, the program sh
 
 ![alt text](https://github.com/shuleyu/raytracing/blob/master/SRC/example1.png)
 
-A ScS reflection on an ellipse-shaped low velocity structure on the core mantle boundary; ray is coming from left hand side:
+A ScS reflection on an ellipse-shaped low velocity structure on the core mantle boundary; ray is coming from left hand side.
 
 Green lines for polarity change. Line width are comparable to displacement amplitude.
 
