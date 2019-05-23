@@ -47,16 +47,21 @@ This scipt will do several things:
 
 # Example
 
-With a proper WORKDIR and using the default parameters in INFILE, the program should calculate the following example case. If gmt4 is installed, it will also produce the following figure:
+With a proper WORKDIR, the program will calculate the following example case.
 
+If gmt4 is installed, it will also produce the following figure:
 
 ![alt text](https://github.com/shuleyu/raytracing/blob/master/SRC/example1.png)
 
-A ScS reflection on an ellipse-shaped low velocity structure on the core mantle boundary; ray is coming from left hand side.
+This is an ScS reflection on an ellipse-shaped low velocity structure on the core mantle boundary.
 
-Green lines for polarity change. Line width are comparable to displacement amplitude.
+  - Ray is coming from left hand side.
 
-Another example showing multiple ScS reflections on this structure (varying takeoff angle each time):
+  - Green lines for polarity change.
+
+  - Line width are comparable to displacement amplitude.
+
+Another example showing multiple ScS reflections on similar structure (varying takeoff angle each time):
 
 ![alt text](https://github.com/shuleyu/raytracing/blob/master/SRC/example2.png)
 
