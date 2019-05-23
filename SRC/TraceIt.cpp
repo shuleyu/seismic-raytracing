@@ -24,11 +24,13 @@
 #include<PlaneWaveCoefficients.hpp>
 #include<ReadParameters.hpp>
 
+#define _TURNINGANGLE 89.99
+
 using namespace std;
 
 enum PI{DebugInfo,TS,TD,RD,StopAtSurface,nThread,FLAG1};
-enum PS{InputRays,Layers,Depths,Ref,Polygons,OutFilePrefix,ReceiverFile,PolygonOutPrefix,FLAG2};
-enum PF{CriticalAngle,FLAG3};
+enum PS{InputRays,Layers,Depths,Ref,Polygons,RayFilePrefix,ReceiverFileName,PolygonFilePrefix,FLAG2};
+enum PF{FLAG3};
 ReadParameters<PI,PS,PF> P;
 
 // Define the ray head structure.
@@ -59,12 +61,14 @@ vector<double> MakeRef(const double &depth,const vector<vector<double>> &dev){
     return {vp,vs,rho};
 }
 
-// generating rays birthed from RayHeads[i]
-void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<size_t> &Running, vector<Ray> &RayHeads, double RE, const vector<double> &SpecialDepths,
-                   const vector<vector<double>> &R,const vector<vector<double>> &Vp,const vector<vector<double>> &Vs,const vector<vector<double>> &Rho,
+// generating rays born from RayHeads[i]
+void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<size_t> &Running, vector<Ray> &RayHeads,
+                   double RE, const vector<double> &SpecialDepths, const vector<vector<double>> &R,
+                   const vector<vector<double>> &Vp,const vector<vector<double>> &Vs,const vector<vector<double>> &Rho,
                    double MinInc, const vector<vector<pair<double,double>>> &Regions,
                    const vector<double> &dVp, const vector<double> &dVs,const vector<double> &dRho,
                    double &PlotPosition,map<string,double> &PlotColorPosition){
+
 
     if (RayHeads[i].RemainingLegs==0) {
         Running.fetch_sub(1);
@@ -119,7 +123,7 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<size_t> &Running, vect
     size_t radius;
     vector<double> degree;
     const auto &v=(RayHeads[i].IsP?Vp:Vs);
-    auto ans=RayPath(R[CurRegion],v[CurRegion],RayHeads[i].RayP,Top,Bot,degree,radius,P[CriticalAngle]);
+    auto ans=RayPath(R[CurRegion],v[CurRegion],RayHeads[i].RayP,Top,Bot,degree,radius,_TURNINGANGLE);
 
 
     // If the new leg is trivia, no further operation needed.
@@ -491,7 +495,7 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<size_t> &Running, vect
 
     // Output valid part ray paths.
     ofstream fpout;
-    fpout.open(P[OutFilePrefix]+to_string(i+1),ofstream::app);
+    fpout.open(P[RayFilePrefix]+to_string(i+1),ofstream::app);
     fpout << "> " << (RayHeads[i].Color=="black"?(RayHeads[i].IsP?"blue":"red"):RayHeads[i].Color) << " "
                   << (RayHeads[i].IsP?"P ":"S ") << RayHeads[i].TravelTime << " sec. " << RayHeads[i].Inc << " IncDeg. "
                   << RayHeads[i].Amp << " DispAmp. " << RayHeads[i].TravelDist << " km. " << endl;
@@ -503,7 +507,7 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<size_t> &Running, vect
     if (fabs(NextPr_R-RE)<MinInc) ++RayHeads[i].Surfacing;
     if (fabs(NextPr_R-RE)<MinInc && (P[StopAtSurface]==0 || RayHeads[i].Surfacing<2)) {
 
-        fpout.open(P[ReceiverFile],ofstream::app);
+        fpout.open(P[ReceiverFileName],ofstream::app);
 
         if (PlotColorPosition.find(RayHeads[i].Color)==PlotColorPosition.end())
             PlotColorPosition[RayHeads[i].Color]=PlotPosition++;
@@ -719,7 +723,7 @@ int main(int argc, char **argv){
                     tmpregion2.pop_back();
 
                 }
-                ofstream fpout(P[PolygonOutPrefix]+to_string(Regions.size()));
+                ofstream fpout(P[PolygonFilePrefix]+to_string(Regions.size()));
                 for (auto &item:tmpregion2) fpout << item.first << " " << item.second << '\n';
                 fpout.close();
                 Regions.push_back(tmpregion2);
@@ -778,7 +782,7 @@ int main(int argc, char **argv){
     // For plotting: 1D reference property deviation depths.
     ofstream fpout;
     if (!Deviation.empty()){
-        fpout.open(P[PolygonOutPrefix]+"0");
+        fpout.open(P[PolygonFilePrefix]+"0");
         for (auto &item:Deviation) {
             fpout << ">\n";
             double d=RE-item[0];
@@ -825,7 +829,7 @@ int main(int argc, char **argv){
     RayHeads.resize(potentialSize);
 
 
-    fpout.open(P[ReceiverFile]);
+    fpout.open(P[ReceiverFileName]);
     fpout << "<TextHeight> <Takeoff> <Rayp> <Incident> <Dist> <TravelTime> <DispAmp> <RemainingLegs> <WaveTypeTrain> <RayTrain>" << '\n';
     fpout.close();
 
@@ -845,7 +849,8 @@ int main(int argc, char **argv){
 
         if (Running.load()<(size_t)P[nThread] && Done<Cnt.load()) {
             Running.fetch_add(1);
-            allThread.push_back(thread(followThisRay,Done++, std::ref(Cnt), std::ref(Running), std::ref(RayHeads), RE, std::cref(SpecialDepths),
+            allThread.push_back(thread(followThisRay,Done++, std::ref(Cnt), std::ref(Running),
+                                std::ref(RayHeads), RE, std::cref(SpecialDepths),
                                 std::cref(R),std::cref(Vp),std::cref(Vs),std::cref(Rho),MinInc,
                                 std::cref(Regions),std::cref(dVp),std::cref(dVs),std::cref(dRho),
                                 std::ref(PlotPosition),std::ref(PlotColorPosition)));

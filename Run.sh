@@ -37,7 +37,7 @@ cp ${CODEDIR}/LIST.sh ${WORKDIR}/LIST/LIST_`date +%m%d_%H%M`
 chmod -x ${WORKDIR}/LIST/*
 cd ${WORKDIR}
 
-# Deal with single parameters.
+# Dealt with single parameters.
 grep -n "<" ${WORKDIR}/tmpfile_INFILE_$$     \
 | grep ">" | grep -v "BEGIN" | grep -v "END" \
 | awk 'BEGIN {FS="<"} {print $2}'            \
@@ -48,7 +48,7 @@ sed 's/\"[[:blank:]]/\"/' tmpfile2_$$ > tmpfile3_$$
 paste -d= tmpfile1_$$ tmpfile3_$$ > tmpfile_$$
 source ${WORKDIR}/tmpfile_$$
 
-# Deal with multiple parameters.
+# Dealt with multiple parameters.
 # They are between <XXX_BEGIN> and <XXX_END>
 # The list is put into ${WORKDIR}/tmpfile_XXX_${RunNumber}
 grep -n "<" ${WORKDIR}/tmpfile_INFILE_$$ \

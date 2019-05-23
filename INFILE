@@ -1,21 +1,21 @@
-# Directories.
-<WORKDIR>             /home/shule/PROJ/t058.RayTracing_2D
-<BASHCODEDIR>         /home/shule/Research/Fun.Bash.c001
+
+# Output directory and output filenames (or prefix).
+
+<WORKDIR>             /home/shule/RayTracing_2D
+
+<RayFilePrefix>       Ray_
+<PolygonFilePrefix>   Polygon_
+<ReceiverFileName>    Receivers.txt
+
+# Calculation set-up.
 
 <nThread>             7
 
-# Outputs
+                      -- an integer >=1. If >1, will utilized the multi-threading to increase calculation speed.
+
 <DebugInfo>           0
 
-                      -- "0" or "1", calculation progress will be written to ${WORKDIR}/stdout.
-
-<CriticalAngle>       89.99
-
-                      -- in deg. The criteria for "turning".
-
-<OutFilePrefix>       Ray_
-<PolygonOutPrefix>    Polygon_
-<ReceiverFile>        Receivers.txt
+                      -- a switch (0 or 1). If ==1, debug info will be written to ${WORKDIR}/stdout.
 
 ## switches: (R)eflection/(T)ransmission to (S)ame/(D)ifferent wave types (P or S)
 
@@ -23,26 +23,32 @@
 <TD>                  1
 <RD>                  1
 
-                      -- Choose to supress unwanted rays.
-                      TD: transmission, Difference wave-type (if possible).
-                      TS: transmission, Same wave-type (if possible).
-                      RD: reflection, Different wave-type wave-type (if possible).
-                      RS: reflection, same wave-type. Notice this is always possible, so the code always do this.
+                      -- switches (0 or 1), to turn-on(1)/off(0) unwanted reflection/trasmission(refraction).
+                      TD: include Transmission to Difference wave-type (P-to-S and S-to-P).
+                      TS: include Transmission to the Same wave-type (P-to-P and S-to-S).
+                      RD: include Reflection to Different wave-type (P-to-S and S-to-P).
+                      RS: include Reflection to the Same wave-type (P-to-P and S-to-S).
+                          Notice: RS is always possible. Therefore the code internally set RS to 1. Can't be changed by users.
 
-## Stop flag.
+## Stop choice.
 <StopAtSurface>       1
 
-## Ray settings.
-## using "black" in Coloring resulting in plotting S as red and P as blue.
+                      -- a switch (0 or 1), If ==1, ray tracing is ended once current ray reaches the surface.
+
+## source settings.
 ##
 ## 5 columns:
 ##
-## Begin Theta (deg)   |   Begin Depth (km)   |    TakeOffAngle (deg)   |    "P","SV" or "SH"    |     Coloring     |     Calculation steps.
+## source Theta (deg)  |  source Depth (km)  |   ray TakeOffAngle (deg)  |   "P","SV" or "SH"   |    Coloring    |    Calculation steps.
+
 <InputRays_BEGIN>
 
 
 0    500     12.10   SV    black     6
 0    500     12.11   SV    black     6
+
+<InputRays_END>
+
 0    500     12.12   SV    black     6
 0    500     12.13   SV    black     6
 0    500     12.14   SV    black     6
@@ -108,10 +114,7 @@
 0    500     12.74   SV    black     6
 0    500     12.75   SV    black     6
 
-<InputRays_END>
-
-
-## Layer settings (in km).
+## 1D layer increments (in km).
 ## Will create velocity grid using these parameters.
 ## Interval gives layer increment between Depth_N and Depth_{N+1}.
 ## -1 at the last line is a placeholder with no meaning.

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================
-# This script plot the 1D ray-tracing result.
+# This script plot the 2D ray-tracing result.
 #
 # Shule Yu
 # Spet 11 2014
@@ -24,7 +24,7 @@ gmtset LABEL_OFFSET = 0.05c
 # ================================================
 
 # Check Calculation
-ls ${WORKDIR}/${OutFilePrefix}* >/dev/null 2>&1
+ls ${WORKDIR}/${RayFilePrefix}* >/dev/null 2>&1
 [ $? -ne 0 ] && echo "    !=> In `basename $0`: Run a01 first ..." && exit 1
 RE="6371.0"
 
@@ -74,7 +74,7 @@ EOF
 EOF
 
     # plot ray path.
-    for file in `ls ${WORKDIR}/${OutFilePrefix}*`
+    for file in `ls ${WORKDIR}/${RayFilePrefix}*`
     do
 
         # Plot choice. Rays with segments larger than 90 degree is not plotted.
@@ -91,7 +91,7 @@ EOF
         psxy ${file} ${PROJ} ${REG} -W${Amp}p,${RayColor} -m -O -K >> ${OUTFILE}
     done
 
-    for file in `ls ${WORKDIR}/${OutFilePrefix}*`
+    for file in `ls ${WORKDIR}/${RayFilePrefix}*`
     do
         # Plot choice. Rays with segments larger than 90 degree is not plotted.
 #         FinalDist=`tail -n 1 ${file} | awk '{if ($1>90) print 0; else print 1}'`
@@ -111,7 +111,7 @@ EOF
 
     if [ `echo "${PLOTSIZE}>10" | bc` -eq 1 ]
     then
-        ${BASHCODEDIR}/Findfield.sh ${WORKDIR}/${ReceiverFile} "<TextHeight> <Dist> <TravelTime>" > tmpfile_$$
+        ${SRCDIR}/FindColumn.sh ${WORKDIR}/${ReceiverFileName} "<TextHeight> <Dist> <TravelTime>" > tmpfile_$$
         while read z dist tt
         do
             pstext ${PROJ} ${REG} -N -O -K >> ${OUTFILE} << EOF
@@ -130,7 +130,7 @@ EOF
     done < tmpfile_sources_$$
 
     # plot velocity anomalies.
-    for file in `ls ${WORKDIR}/${PolygonOutPrefix}* 2>/dev/null`
+    for file in `ls ${WORKDIR}/${PolygonFilePrefix}* 2>/dev/null`
     do
         psxy ${PROJ} ${REG} ${file} -m -L -W0.3p,black -O -K  >> ${OUTFILE}
     done
@@ -152,6 +152,5 @@ done < ${WORKDIR}/tmpfile_PlotWhere_${RunNumber} # done plot position loop.
 Title=`basename $0`
 cat `ls -rt *ps` > ${PLOTDIR}/${Title%.sh}.ps
 ps2pdf ${PLOTDIR}/${Title%.sh}.ps ${PLOTDIR}/${Title%.sh}.pdf
-tomini ${PLOTDIR}/${Title%.sh}.pdf
 
 exit 0

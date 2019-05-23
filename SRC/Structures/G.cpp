@@ -12,6 +12,7 @@
 using namespace std;
 
 int main(){
+    ofstream fpout("Gaussian");
 
     double X0=31.226,Y0=2891;
     double dt=0.005,L=7.5,H=7.5,sigma=0.8493218;
@@ -24,7 +25,6 @@ int main(){
 
     Normalize(A);
 
-    ofstream fpout("Gaussian");
     for (size_t i=0;i<A.size();++i){
         fpout << X0-L/2+i*dt << " " << Y0-H*A[i] << '\n';
     }

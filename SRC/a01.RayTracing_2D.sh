@@ -9,7 +9,7 @@
 
 echo ""
 echo "--> `basename $0` is running."
-rm -f ${WORKDIR}/${OutFilePrefix}* ${WORKDIR}/${PolygonOutPrefix}*
+rm -f ${WORKDIR}/${RayFilePrefix}* ${WORKDIR}/${PolygonFilePrefix}*
 trap "rm -f ${WORKDIR}/tmpfile*$$ ${WORKDIR}/*_${RunNumber}; exit 1" SIGINT
 
 # ==============================================
@@ -17,7 +17,7 @@ trap "rm -f ${WORKDIR}/tmpfile*$$ ${WORKDIR}/*_${RunNumber}; exit 1" SIGINT
 # ==============================================
 
 # C++ code.
-${EXECDIR}/TraceIt.out 6 8 1 << EOF
+${EXECDIR}/TraceIt.out 6 8 0 << EOF
 ${DebugInfo}
 ${TS}
 ${TD}
@@ -29,10 +29,9 @@ ${WORKDIR}/tmpfile_LayerSetting_${RunNumber}
 ${WORKDIR}/tmpfile_KeyDepths_${RunNumber}
 ${WORKDIR}/tmpfile_1DRef_${RunNumber}
 ${WORKDIR}/tmpfile_Polygons_${RunNumber}
-${WORKDIR}/${OutFilePrefix}
-${WORKDIR}/${ReceiverFile}
-${WORKDIR}/${PolygonOutPrefix}
-${CriticalAngle}
+${WORKDIR}/${RayFilePrefix}
+${WORKDIR}/${ReceiverFileName}
+${WORKDIR}/${PolygonFilePrefix}
 EOF
 
 [ $? -ne 0 ] && echo "C++ code Failed ..." && rm -f tmpfile*$$ && exit 1

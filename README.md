@@ -1,21 +1,32 @@
-# Install
+# Download and Install
+'''
 $ git clone --recursive https://github.com/shuleyu/seismic-raytracing.git
+'''
 
-If "--recursive" is not added, the dependencies will not be cloned. In such case, do:
+If "--recursive" is not added, the dependencies will not be downloaded. In such case, do:
 
 $ cd ./seismic-raytracing
 
 $ git submodule update --init --recursive
 
-# Input file (INFILE)
+# Parameter file (INFILE)
+The WORKDIR parameter specify the output folder of this program. The program will create this folder if it doesn't exist.
 
-# Run the code
-seismology 2D ray tracing. Use polygons to represent 2D regions.
+$ vim ./INFILE
 
-Edit INFILE, execute Run.sh. Dependencies should be here: https://github.com/shuleyu/CPP-Library.
+# Task file (LIST.sh)
+Specify which task to run.
 
-For example, the ScS reflection on an ellipse-shaped low velocity structure on the core mantle boundary:
+$ vim ./LIST.sh
 
-![alt text](https://github.com/shuleyu/raytracing/blob/master/example2.png)
+# Execution file (Run.sh)
+When INFILE and LIST.sh are properly set, run this script:
 
-Ray comes from left (changing slowness for each subplot). red if polarity is positive, green means negative polarity.
+$ ./Run.sh
+
+# Example
+A ScS reflection on an ellipse-shaped low velocity structure on the core mantle boundary:
+
+![alt text](https://github.com/shuleyu/raytracing/blob/master/SRC/example2.png)
+
+Ray is coming from left hand side. Green lines for polarity change. Line width represent displacement amplitude.
