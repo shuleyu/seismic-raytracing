@@ -3,7 +3,11 @@
 $ git clone --recursive https://github.com/shuleyu/seismic-raytracing.git
 ```
 
-If "--recursive" is not added, the dependencies will not be downloaded. In such case, do:
+If
+```
+--recursive
+```
+is not added, the dependencies will not be downloaded. In such case, do:
 
 ```
 $ cd ./seismic-raytracing
@@ -19,7 +23,7 @@ $ vim ./INFILE
 ```
 
 # Task file (LIST.sh)
-Specify which task to run.
+Specify which task(s) to execute.
 
 ```
 $ vim ./LIST.sh
