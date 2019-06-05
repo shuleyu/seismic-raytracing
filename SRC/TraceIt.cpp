@@ -29,7 +29,7 @@
 using namespace std;
 
 enum PI{DebugInfo,TS,TD,RD,StopAtSurface,nThread,FLAG1};
-enum PS{InputRays,Layers,Depths,Ref,Polygons,RayFilePrefix,ReceiverFileName,PolygonFilePrefix,FLAG2};
+enum PS{InputRays,Layers,Depths,Ref,Polygons,ReceiverFileName,PolygonFilePrefix,RayFilePrefix,FLAG2};
 enum PF{FLAG3};
 ReadParameters<PI,PS,PF> P;
 
@@ -62,13 +62,12 @@ vector<double> MakeRef(const double &depth,const vector<vector<double>> &dev){
 }
 
 // generating rays born from RayHeads[i]
-void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<size_t> &Running, vector<Ray> &RayHeads,
+void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<size_t> &Running, vector<string> &ReachSurfaces, vector<Ray> &RayHeads,
                    double RE, const vector<double> &SpecialDepths, const vector<vector<double>> &R,
                    const vector<vector<double>> &Vp,const vector<vector<double>> &Vs,const vector<vector<double>> &Rho,
-                   double MinInc, const vector<vector<pair<double,double>>> &Regions,
+                   double MinInc, const vector<vector<pair<double,double>>> &Regions, const vector<vector<double>> &RegionBounds,
                    const vector<double> &dVp, const vector<double> &dVs,const vector<double> &dRho,
                    double &PlotPosition,map<string,double> &PlotColorPosition){
-
 
     if (RayHeads[i].RemainingLegs==0) {
         Running.fetch_sub(1);
@@ -169,14 +168,14 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<size_t> &Running, vect
 
         if (CurRegion!=0){ // New leg starts in some 2D polygon ...
 
-            if (PointInPolygon(Regions[CurRegion],p)) continue; // ... and this point stays in that polygon.
+            if (PointInPolygon(Regions[CurRegion],p,0,RegionBounds[CurRegion])) continue; // ... and this point stays in that polygon.
             else { // ... but this point enters another polygon.
 
                 RayEnd=j;
 
                 // which region is the new leg entering?
                 for (size_t k=1;k<Regions.size();++k){
-                    if (PointInPolygon(Regions[k],p)) {
+                    if (PointInPolygon(Regions[k],p,0,RegionBounds[k])) {
                         NextRegion=k;
                         break;
                     }
@@ -187,7 +186,7 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<size_t> &Running, vect
         }
         else { // New leg starts in 1D reference region. Search for the region it enters.
             for (size_t k=1;k<Regions.size();++k){
-                if (PointInPolygon(Regions[k],p)) { // If ray enters another region.
+                if (PointInPolygon(Regions[k],p,0,RegionBounds[k])) { // If ray enters another region.
                     RayEnd=j;
                     NextRegion=k;
                     break;
@@ -494,24 +493,24 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<size_t> &Running, vect
 
 
     // Output valid part ray paths.
-    ofstream fpout;
-    fpout.open(P[RayFilePrefix]+to_string(i+1),ofstream::app);
-    fpout << "> " << (RayHeads[i].Color=="black"?(RayHeads[i].IsP?"blue":"red"):RayHeads[i].Color) << " "
-                  << (RayHeads[i].IsP?"P ":"S ") << RayHeads[i].TravelTime << " sec. " << RayHeads[i].Inc << " IncDeg. "
-                  << RayHeads[i].Amp << " DispAmp. " << RayHeads[i].TravelDist << " km. " << endl;
-    for (int j=0;j<RayEnd;++j)
-        fpout << RayHeads[i].Pt+M*degree[j] << " " << R[CurRegion][rIndex(j)] << '\n';
-    fpout.close();
+    if (P[RayFilePrefix]!="NONE") {
+        ofstream fpout(P[RayFilePrefix]+to_string(i+1));
+        fpout << "> " << (RayHeads[i].Color=="black"?(RayHeads[i].IsP?"blue":"red"):RayHeads[i].Color) << " "
+                      << (RayHeads[i].IsP?"P ":"S ") << RayHeads[i].TravelTime << " sec. " << RayHeads[i].Inc << " IncDeg. "
+                      << RayHeads[i].Amp << " DispAmp. " << RayHeads[i].TravelDist << " km. " << endl;
+        for (int j=0;j<RayEnd;++j)
+            fpout << RayHeads[i].Pt+M*degree[j] << " " << R[CurRegion][rIndex(j)] << '\n';
+        fpout.close();
+    }
 
     // If ray reaches surface, output info at the surface.
     if (fabs(NextPr_R-RE)<MinInc) ++RayHeads[i].Surfacing;
     if (fabs(NextPr_R-RE)<MinInc && (P[StopAtSurface]==0 || RayHeads[i].Surfacing<2)) {
 
-        fpout.open(P[ReceiverFileName],ofstream::app);
-
         if (PlotColorPosition.find(RayHeads[i].Color)==PlotColorPosition.end())
             PlotColorPosition[RayHeads[i].Color]=PlotPosition++;
-        fpout << PlotColorPosition[RayHeads[i].Color] << " ";
+        stringstream ss;
+        ss << PlotColorPosition[RayHeads[i].Color] << " ";
 
         // Accumulate the travel-time.
         int I=i;
@@ -522,11 +521,11 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<size_t> &Running, vect
             tt+=RayHeads[I].TravelTime;
             I=RayHeads[I].Prev;
         }
-        fpout << RayHeads[hh.back()].Takeoff << " " << RayHeads[i].RayP << " " << RayHeads[i].Inc << " " << NextPt_R << " "
+        ss << RayHeads[hh.back()].Takeoff << " " << RayHeads[i].RayP << " " << RayHeads[i].Inc << " " << NextPt_R << " "
               << tt << " " << RayHeads[i].Amp << " " << RayHeads[i].RemainingLegs << " ";
-        for (auto rit=hh.rbegin();rit!=hh.rend();++rit) fpout << (RayHeads[*rit].IsP?(RayHeads[*rit].GoUp?"p":"P"):(RayHeads[*rit].GoUp?"s":"S")) << ((*rit)==*hh.begin()?" ":"->");
-        for (auto rit=hh.rbegin();rit!=hh.rend();++rit) fpout << (1+*rit) << ((*rit)==*hh.begin()?"\n":"->");
-        fpout.close();
+        for (auto rit=hh.rbegin();rit!=hh.rend();++rit) ss << (RayHeads[*rit].IsP?(RayHeads[*rit].GoUp?"p":"P"):(RayHeads[*rit].GoUp?"s":"S")) << ((*rit)==*hh.begin()?" ":"->");
+        for (auto rit=hh.rbegin();rit!=hh.rend();++rit) ss << (1+*rit) << ((*rit)==*hh.begin()?"\n":"->");
+        ReachSurfaces[i]=ss.str();
         if (P[StopAtSurface]==1) {
             Running.fetch_sub(1);
             return;
@@ -690,6 +689,8 @@ int main(int argc, char **argv){
     string tmpstr;
     vector<pair<double,double>> tmpregion,tmpregion2;
     vector<vector<pair<double,double>>> Regions{tmpregion};
+    vector<vector<double>> RegionBounds{{-numeric_limits<double>::max(),numeric_limits<double>::max(),
+                                         -numeric_limits<double>::max(),numeric_limits<double>::max()}};
     vector<double> dVp{1},dVs{1},dRho{1};
 
     fpin.open(P[Polygons]);
@@ -707,6 +708,8 @@ int main(int argc, char **argv){
                 // Rectify input region (tmpregion --> tmpregion2).
                 // Record current region (tmpregion2) into "Regions".
                 tmpregion2.clear();
+                double Xmin=numeric_limits<double>::max(),Xmax=-Xmin;
+                double Ymin=numeric_limits<double>::max(),Ymax=-Ymin;
                 for (size_t i=0;i<tmpregion.size();++i){
                     size_t j=(i+1)%tmpregion.size();
                     double Rdist=(tmpregion[j].second-tmpregion[i].second);
@@ -719,14 +722,24 @@ int main(int argc, char **argv){
                         dR=Rdist/(NPTS-1),dT=Tdist/(NPTS-1);
                         dL=LocDist(tmpregion[maxIndex].first,0,tmpregion[maxIndex].second,tmpregion[maxIndex].first+dT,0,tmpregion[maxIndex].second+dR);
                     }
-                    for (size_t k=0;k<NPTS;++k) tmpregion2.push_back(make_pair(tmpregion[i].first+k*dT,tmpregion[i].second+k*dR));
+                    for (size_t k=0;k<NPTS;++k) {
+                        tmpregion2.push_back(make_pair(tmpregion[i].first+k*dT,tmpregion[i].second+k*dR));
+                        Xmin=min(Xmin,tmpregion2.back().first);
+                        Xmax=max(Xmax,tmpregion2.back().first);
+                        Ymin=min(Ymin,tmpregion2.back().second);
+                        Ymax=max(Ymax,tmpregion2.back().second);
+                    }
                     tmpregion2.pop_back();
 
                 }
-                ofstream fpout(P[PolygonFilePrefix]+to_string(Regions.size()));
-                for (auto &item:tmpregion2) fpout << item.first << " " << item.second << '\n';
-                fpout.close();
                 Regions.push_back(tmpregion2);
+                RegionBounds.push_back({Xmin,Xmax,Ymin,Ymax});
+
+                if (P[PolygonFilePrefix]!="NONE"){
+                    ofstream fpout(P[PolygonFilePrefix]+to_string(Regions.size()));
+                    for (auto &item:Regions.back()) fpout << item.first << " " << item.second << '\n';
+                    fpout.close();
+                }
 
                 // Use the reigon boundaries (minr,maxr) to derive layers around the region.
                 // we will use these new layers for altered velocities.
@@ -780,9 +793,8 @@ int main(int argc, char **argv){
 
 
     // For plotting: 1D reference property deviation depths.
-    ofstream fpout;
-    if (!Deviation.empty()){
-        fpout.open(P[PolygonFilePrefix]+"0");
+    if (!Deviation.empty() && P[PolygonFilePrefix]!="NONE"){
+        ofstream fpout(P[PolygonFilePrefix]+"0");
         for (auto &item:Deviation) {
             fpout << ">\n";
             double d=RE-item[0];
@@ -810,7 +822,7 @@ int main(int argc, char **argv){
         // Source in any polygons?
         int rid=0;
         for (size_t i=1;i<Regions.size();++i)
-            if (PointInPolygon(Regions[i],make_pair(theta,RE-depth),1)) {rid=i;break;}
+            if (PointInPolygon(Regions[i],make_pair(theta,RE-depth),1,RegionBounds[i])) {rid=i;break;}
 
         // Calculate ray parameter.
         auto ans=MakeRef(depth,Deviation);
@@ -829,38 +841,46 @@ int main(int argc, char **argv){
     RayHeads.resize(potentialSize);
 
 
-    fpout.open(P[ReceiverFileName]);
-    fpout << "<TextHeight> <Takeoff> <Rayp> <Incident> <Dist> <TravelTime> <DispAmp> <RemainingLegs> <WaveTypeTrain> <RayTrain>" << '\n';
-    fpout.close();
-
-
     // Start ray tracing. (Woohoo!)
     //
     // Will process each "Ray" leg in "RayHeads".
     // For future legs generated by reflction/refraction, create new "Ray" and push to the end of "RayHeads" queue.
     double PlotPosition=1;
     map<string,double> PlotColorPosition;
-    vector<thread> allThread;
+    vector<thread> allThread(RayHeads.capacity());
+    vector<string> ReachSurfaces(RayHeads.capacity());
 
-    size_t Done=0;
+    size_t Doing=0,Done=0;
     atomic<size_t> Running;
     Running.store(0);
-    while (Done!=Cnt.load() || Running.load()!=0) {
+    while (Doing!=Cnt.load() || Running.load()!=0) {
 
-        if (Running.load()<(size_t)P[nThread] && Done<Cnt.load()) {
+        if (Running.load()<(size_t)P[nThread] && Doing<Cnt.load()) {
             Running.fetch_add(1);
-            allThread.push_back(thread(followThisRay,Done++, std::ref(Cnt), std::ref(Running),
-                                std::ref(RayHeads), RE, std::cref(SpecialDepths),
-                                std::cref(R),std::cref(Vp),std::cref(Vs),std::cref(Rho),MinInc,
-                                std::cref(Regions),std::cref(dVp),std::cref(dVs),std::cref(dRho),
-                                std::ref(PlotPosition),std::ref(PlotColorPosition)));
+            allThread[Doing]=thread(followThisRay,Doing, std::ref(Cnt), std::ref(Running), std::ref(ReachSurfaces),
+                             std::ref(RayHeads), RE, std::cref(SpecialDepths),
+                             std::cref(R),std::cref(Vp),std::cref(Vs),std::cref(Rho),MinInc,
+                             std::cref(Regions),std::cref(RegionBounds),std::cref(dVp),std::cref(dVs),std::cref(dRho),
+                             std::ref(PlotPosition),std::ref(PlotColorPosition));
+            if (Doing>0 && Doing%10000==0) {
+                for (size_t i=Done;i<Doing-P[nThread];++i)
+                    allThread[i].join();
+                Done=Doing-P[nThread];
+            }
+            ++Doing;
         }
         else usleep(1000); 
 
     } // End of ray tracing.
 
-    for (auto &item: allThread)
-        item.join();
+    for (size_t i=Done;i<Doing;++i)
+        allThread[i].join();
+
+    ofstream fpout(P[ReceiverFileName]);
+    fpout << "<TextHeight> <Takeoff> <Rayp> <Incident> <Dist> <TravelTime> <DispAmp> <RemainingLegs> <WaveTypeTrain> <RayTrain>" << '\n';
+    for (const string &s: ReachSurfaces)
+        fpout << s;
+    fpout.close();
 
 cout << Cnt.load() << "/" << RayHeads.capacity() << endl;
 

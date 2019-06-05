@@ -3,9 +3,12 @@
 
 <WORKDIR>             /home/shule/RayTracing_2D
 
-<RayFilePrefix>       Ray_
-<PolygonFilePrefix>   Polygon_
 <ReceiverFileName>    Receivers.txt
+
+<PolygonFilePrefix>   Polygon_
+<RayFilePrefix>       Ray_
+
+                      -- set prefix to "NONE" if you don't need the ray paths outputs.
 
 # Calculation set-up.
 
