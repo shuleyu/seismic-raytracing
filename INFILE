@@ -24,6 +24,7 @@
 
 <TS>                  1
 <TD>                  1
+<RS>                  1
 <RD>                  1
 
                       -- switches (0 or 1), to turn-on(1)/off(0) unwanted reflection/trasmission(refraction).
@@ -46,7 +47,7 @@
 
 <InputRays_BEGIN>
 
-0    500     22.9   SH    black     6
+0    500     22.9   SV    black     6
 
 <InputRays_END>
 
@@ -77,6 +78,7 @@
 ## depths (km).
 <KeyDepths_BEGIN>
 
+
 <KeyDepths_END>
 
 2851
@@ -94,7 +96,7 @@
 
 <1DRef_END>
 
-2851    -10    -30   10
+2851    0   -20   0
 2861    0   20    0
 2876    0   -5    0
 2891    0   0     0

@@ -28,7 +28,7 @@
 
 using namespace std;
 
-enum PI{DebugInfo,TS,TD,RD,StopAtSurface,nThread,FLAG1};
+enum PI{DebugInfo,TS,TD,RS,RD,StopAtSurface,nThread,FLAG1};
 enum PS{InputRays,Layers,Depths,Ref,Polygons,ReceiverFileName,PolygonFilePrefix,RayFilePrefix,FLAG2};
 enum PF{FLAG3};
 ReadParameters<PI,PS,PF> P;
@@ -62,8 +62,9 @@ vector<double> MakeRef(const double &depth,const vector<vector<double>> &dev){
 }
 
 // generating rays born from RayHeads[i]
-void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<size_t> &Running, vector<string> &ReachSurfaces, vector<Ray> &RayHeads,
-                   double RE, const vector<double> &SpecialDepths, const vector<vector<double>> &R,
+void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<int> &Estimation, atomic<size_t> &Running,
+                   vector<string> &ReachSurfaces, vector<Ray> &RayHeads,
+                   double RE, int branches, const vector<double> &SpecialDepths, const vector<vector<double>> &R,
                    const vector<vector<double>> &Vp,const vector<vector<double>> &Vs,const vector<vector<double>> &Rho,
                    double MinInc, const vector<vector<pair<double,double>>> &Regions, const vector<vector<double>> &RegionBounds,
                    const vector<double> &dVp, const vector<double> &dVs,const vector<double> &dRho,
@@ -374,9 +375,6 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<size_t> &Running, vect
     if (Mode=="LS" && RayHeads[i].Comp=="P") T_PP=Coef[1];
     if (Mode=="LL" && RayHeads[i].Comp=="P") T_PP=Coef[1];
 
-    if (RayHeads[i].IsP) ts&=(T_PP.imag()==0);
-    else ts&=(T_SS.imag()==0);
-
     //// take-off angles.
     if (RayHeads[i].IsP) {c1=vp1;c2=vp2;}
     else {c1=vs1;c2=vs2;}
@@ -400,9 +398,6 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<size_t> &Running, vect
     if (Mode=="SS" && RayHeads[i].Comp!="SH") {T_PS=Coef[1];T_SP=Coef[6];}
     if (Mode=="SL" && RayHeads[i].Comp=="SV") T_SP=Coef[5];
     if (Mode=="LS" && RayHeads[i].Comp=="P") T_PS=Coef[2];
-
-    if (RayHeads[i].IsP) td&=(T_PS.imag()==0);
-    else td&=(T_SP.imag()==0);
 
     //// take-off angles.
     if (RayHeads[i].IsP) {c1=vp1;c2=vs2;}
@@ -527,6 +522,9 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<size_t> &Running, vect
         for (auto rit=hh.rbegin();rit!=hh.rend();++rit) ss << (1+*rit) << ((*rit)==*hh.begin()?"\n":"->");
         ReachSurfaces[i]=ss.str();
         if (P[StopAtSurface]==1) {
+            int z=RayHeads[i].RemainingLegs;
+            if (branches>1) z=(1-pow(branches,RayHeads[i].RemainingLegs))/(1-branches);
+            Estimation.fetch_sub(branches*z);
             Running.fetch_sub(1);
             return;
         }
@@ -534,7 +532,7 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<size_t> &Running, vect
 
 
     // Add rules of: (t)ransmission/refrection and (r)eflection to (s)ame or (d)ifferent way type.
-    // Notice reflection with the same wave type is always allowed. ("rs" is always true)
+    // Notice reflection with the same wave type is always allowed. ("rs" is always possible)
 
     /// if ray going down and turns.
     if (!RayHeads[i].GoUp && ans.second) ts=td=rd=false;
@@ -566,7 +564,9 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<size_t> &Running, vect
         newRay.GoUp=(fabs(Takeoff_ts)>90);
         newRay.GoLeft=(Takeoff_ts<0);
         newRay.InRegion=NextRegion;
-        newRay.Amp*=(newRay.IsP?T_PP.real():T_SS.real());
+        double sign1=(T_PP.imag()==0?(T_PP.real()<0?-1:1):1);
+        double sign2=(T_SS.imag()==0?(T_SS.real()<0?-1:1):1);
+        newRay.Amp*=(newRay.IsP?(sign1*abs(T_PP)):(sign2*abs(T_SS)));
         RayHeads[Cnt.fetch_add(1)]=newRay;
     }
 
@@ -580,7 +580,9 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<size_t> &Running, vect
         newRay.GoUp=(fabs(Takeoff_td)>90);
         newRay.GoLeft=(Takeoff_td<0);
         newRay.InRegion=NextRegion;
-        newRay.Amp*=(newRay.IsP?T_PS.real():T_SP.real());
+        double sign1=(T_PS.imag()==0?(T_PS.real()<0?-1:1):1);
+        double sign2=(T_SP.imag()==0?(T_SP.real()<0?-1:1):1);
+        newRay.Amp*=(newRay.IsP?(sign1*abs(T_PS)):(sign2*abs(T_SP)));
         RayHeads[Cnt.fetch_add(1)]=newRay;
     }
 
@@ -599,20 +601,26 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<size_t> &Running, vect
         RayHeads[Cnt.fetch_add(1)]=newRay;
     }
 
+    int y=(P[TS]!=0 && !ts)+(P[TD]!=0 && !td)+(P[RD]!=0 && !rd);
+    int z=RayHeads[i].RemainingLegs;
+    if (branches>1) z=(1-pow(branches,RayHeads[i].RemainingLegs))/(1-branches);
+    Estimation.fetch_sub(y*z);
+
     // rs is always possible.
-    Ray newRay=RayHeads[i];
+    if (P[RS]) {
+        Ray newRay=RayHeads[i];
+        newRay.Prev=i;
+        newRay.Pt=NextPt_R;
+        newRay.Pr=NextPr_R;
+        newRay.RayP=Rayp_rs;
+        newRay.GoUp=(fabs(Takeoff_rs)>90);
+        newRay.GoLeft=(Takeoff_rs<0);
+        double sign1=(R_PP.imag()==0?(R_PP.real()<0?-1:1):1);
+        double sign2=(R_SS.imag()==0?(R_SS.real()<0?-1:1):1);
+        newRay.Amp*=(newRay.IsP?(sign1*abs(R_PP)):(sign2*abs(R_SS)));
+        RayHeads[Cnt.fetch_add(1)]=newRay;
+    }
 
-    newRay.Prev=i;
-    newRay.Pt=NextPt_R;
-    newRay.Pr=NextPr_R;
-    newRay.RayP=Rayp_rs;
-    newRay.GoUp=(fabs(Takeoff_rs)>90);
-    newRay.GoLeft=(Takeoff_rs<0);
-    double sign1=(R_PP.imag()==0?(R_PP.real()<0?-1:1):1);
-    double sign2=(R_SS.imag()==0?(R_SS.real()<0?-1:1):1);
-    newRay.Amp*=(newRay.IsP?(sign1*abs(R_PP)):(sign2*abs(R_SS)));
-
-    RayHeads[Cnt.fetch_add(1)]=newRay;
     Running.fetch_sub(1);
     return;
 }
@@ -810,14 +818,13 @@ int main(int argc, char **argv){
     double theta,takeoff;
     vector<Ray> RayHeads;
     size_t potentialSize=0;
+    int branches=(P[TS]!=0)+(P[TD]!=0)+(P[RS]!=0)+(P[RD]!=0);
 
     fpin.open(P[InputRays]);
     while (fpin >> theta >> depth >> takeoff >> phase >> color >> steps){
-        if (!P[TS] && !P[TD] && !P[RD]) potentialSize+=steps;
-        else {
-            int q=1+P[TS]+P[TD]+P[RD];
-            potentialSize+=(1-pow(q,steps))/(1-q);
-        }
+
+        if (branches<=1) potentialSize+=steps;
+        else potentialSize+=(1-pow(branches,steps))/(1-branches);
 
         // Source in any polygons?
         int rid=0;
@@ -838,6 +845,8 @@ int main(int argc, char **argv){
 
     atomic<size_t> Cnt;
     Cnt.store(RayHeads.size());
+    atomic<int> Estimation;
+    Estimation.store(potentialSize);
     RayHeads.resize(potentialSize);
 
 
@@ -857,8 +866,8 @@ int main(int argc, char **argv){
 
         if (Running.load()<(size_t)P[nThread] && Doing<Cnt.load()) {
             Running.fetch_add(1);
-            allThread[Doing]=thread(followThisRay,Doing, std::ref(Cnt), std::ref(Running), std::ref(ReachSurfaces),
-                             std::ref(RayHeads), RE, std::cref(SpecialDepths),
+            allThread[Doing]=thread(followThisRay,Doing, std::ref(Cnt), std::ref(Estimation), std::ref(Running), std::ref(ReachSurfaces),
+                             std::ref(RayHeads), RE, branches, std::cref(SpecialDepths),
                              std::cref(R),std::cref(Vp),std::cref(Vs),std::cref(Rho),MinInc,
                              std::cref(Regions),std::cref(RegionBounds),std::cref(dVp),std::cref(dVs),std::cref(dRho),
                              std::ref(PlotPosition),std::ref(PlotColorPosition));
@@ -882,7 +891,7 @@ int main(int argc, char **argv){
         fpout << s;
     fpout.close();
 
-cout << Cnt.load() << "/" << RayHeads.capacity() << endl;
+cout << Cnt.load() << "/" << RayHeads.capacity() << "/" << Estimation.load() << endl;
 
     return 0;
 }
