@@ -111,11 +111,11 @@ EOF
 
     if [ `echo "${PLOTSIZE}>10" | bc` -eq 1 ]
     then
-        ${SRCDIR}/FindColumn.sh ${WORKDIR}/${ReceiverFileName} "<TextHeight> <Dist> <TravelTime>" > tmpfile_$$
-        while read z dist tt
+        ${SRCDIR}/FindColumn.sh ${WORKDIR}/${ReceiverFileName} "<Dist> <TravelTime>" > tmpfile_$$
+        while read dist tt
         do
             pstext ${PROJ} ${REG} -N -O -K >> ${OUTFILE} << EOF
-${dist} `echo ${PLOTSIZE} ${RE} ${z} | awk '{print $2+$2*2/$1*$3*0.5}'` 15 0 0 LB ${dist} deg. ${tt} sec.
+${dist} `echo ${PLOTSIZE} ${RE} | awk '{print $2+$2*2/$1*0.5}'` 15 0 0 LB ${dist} deg. ${tt} sec.
 EOF
         done < tmpfile_$$
     fi

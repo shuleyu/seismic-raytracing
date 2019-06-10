@@ -1,7 +1,7 @@
 
 # Output directory and output filenames (or prefix).
 
-<WORKDIR>             /home/shule/RayTracing_2D
+<WORKDIR>             /Users/shuleyu/RayTracing_2D
 
 <ReceiverFileName>    Receivers.txt
 
@@ -12,11 +12,11 @@
 
 # Calculation set-up.
 
-<nThread>             7
+<nThread>             1
 
                       -- an integer >=1. If >1, will utilized the multi-threading to increase calculation speed.
 
-<DebugInfo>           0
+<DebugInfo>           1
 
                       -- a switch (0 or 1). If ==1, debug info will be written to ${WORKDIR}/stdout.
 
@@ -31,8 +31,7 @@
                       TD: include Transmission to Difference wave-type (P-to-S and S-to-P).
                       TS: include Transmission to the Same wave-type (P-to-P and S-to-S).
                       RD: include Reflection to Different wave-type (P-to-S and S-to-P).
-                      RS: include Reflection to the Same wave-type (P-to-P and S-to-S).
-                          Notice: RS is always possible. Therefore the code internally set RS to 1. Can't be changed by users.
+                      RS: include Reflection to the Same wave-type (P-to-P and S-to-S). Notice: RS is always possible.
 
 ## Stop choice.
 <StopAtSurface>       1
@@ -63,9 +62,8 @@
 0          0.1
 800        0.1
 2850       0.01
-2895       0.1
+2891       0.1
 5049.5     0.1
-5249.5     0.1
 6371.0     -1
 
 <LayerSetting_END>
