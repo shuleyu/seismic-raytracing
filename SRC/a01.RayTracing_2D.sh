@@ -18,6 +18,8 @@ trap "rm -f ${WORKDIR}/tmpfile*$$ ${WORKDIR}/*_${RunNumber}; exit 1" SIGINT
 # ==============================================
 
 # C++ code.
+
+# valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes ${EXECDIR}/TraceIt.out 7 8 1 << EOF
 ${EXECDIR}/TraceIt.out 7 8 1 << EOF
 ${DebugInfo}
 ${TS}
