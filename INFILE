@@ -1,22 +1,22 @@
 
 # Output directory and output filenames (or prefix).
 
-<WORKDIR>             /Users/shuleyu/RayTracing_2D
+<WORKDIR>             /home/shule/PROJ/t058.RayTracing_2D
 
 <ReceiverFileName>    Receivers.txt
 
 <PolygonFilePrefix>   Polygon_
 <RayFilePrefix>       Ray_
 
-                      -- set prefix to "NONE" if you don't need the ray paths outputs.
+                      -- set prefixes to "NONE" these outputs are unwanted.
 
 # Calculation set-up.
 
-<nThread>             1
+<nThread>             7
 
                       -- an integer >=1. If >1, will utilized the multi-threading to increase calculation speed.
 
-<DebugInfo>           1
+<DebugInfo>           0
 
                       -- a switch (0 or 1). If ==1, debug info will be written to ${WORKDIR}/stdout.
 
@@ -39,6 +39,14 @@
                       -- a switch (0 or 1), If ==1, ray tracing is ended once current ray reaches the surface.
 
 ## source settings.
+## Will convert source theta to 0 ~ 360, this is the source location.
+## Will convert take off angle to -180 ~ 180, negative means takeoff to the left-hand side.
+## Coloring: assign a fixed color (integer) to each initial sources and all its child rays.
+##
+## Will check if source depth is within Earth's interior.
+## Will check if component is amoung "P","SV","SH".
+## Will check if step<=0.
+## Will check if there's at least 1 valid source.
 ##
 ## 5 columns:
 ##
@@ -46,31 +54,47 @@
 
 <InputRays_BEGIN>
 
-0    500     22.9   SV    black     6
+0    500     22.8   P    0    6
 
 <InputRays_END>
 
-## 1D layer increments (in km).
-## Will create velocity grid using these parameters.
-## Interval gives layer increment between Depth_N and Depth_{N+1}.
-## -1 at the last line is a placeholder with no meaning.
+
+## 1D layer grid (in km).
+## Will create grid using these parameters.
+## Will check if the given parameters completely cover 0 ~ 6371 km.
+## Will check depth increment is reasonable.
 ##
-## 2 columns:
-## Depth_N (km)  |  Interval (km)
+## 3 columns:
+## Depth_begin (km) | Depth_end (km) | Grid increment (km)
 <LayerSetting_BEGIN>
 
-0          0.1
-800        0.1
-2850       0.01
-2891       0.1
-5049.5     0.1
-6371.0     -1
+0        800        0.1
+800      2850       0.1
+2850     2895       0.01
+2895     5049.5     0.1
+5049.5   6371       0.1
 
 <LayerSetting_END>
 
 
-## Force reflection/transmission depth.
-## Will mannually do reflection,transmission (restricted by flags) at these depths
+## 1D reference model setting (relative to PREM).
+## The 2D feature (regions) will be relative to the 1D reference model defined here.
+## Will check if the depth is between 0 ~ 6371
+## Will check if the depth1<depht2
+## Will check properties can't be <-100%
+## Will check if the depth intervals are mutually exclusive.
+##
+## 5 columns:
+## PREM deviation begin depth (km) | end depth (km) | dVp (%) | dVs (%) | dRho (%)
+<1DRef_BEGIN>
+
+
+<1DRef_END>
+
+2851  2891   0   -20   0
+
+## Additional reflection/transmission depth (0,2891,5149.5 and 6371 are added automatically).
+## Will check if the depth is between 0 ~ 6371
 ##
 ## 1 column:
 ## depths (km).
@@ -82,26 +106,19 @@
 2851
 
 
-## 1D reference model setting.
-## The 2D feature (regions) will reference to the 1D reference model defined here.
-## This 1D reference model is refer to PREM.
-## Remember to add a last row to revert the 1D reference model back to PREM.
-##
-## 4 columns (should be ordered increasingly by 1st column, for easier understanding)
-## PREM deviation begin depth |  dVp (%)   |   dVs (%)   |   dRho (%)
-<1DRef_BEGIN>
-
-
-<1DRef_END>
-
-2851    0   -20   0
-2861    0   20    0
-2876    0   -5    0
-2891    0   0     0
-
-
 ## Region settings.
-## Specify 2D features. dVp/dVs is compared to PREM at these depths.
+<RectifyLimit>       1
+                     -- float value (in km).
+                     -- Will take the polygon input and refine it.
+                     -- The maximum segment length in the refine result is this value.
+
+## Specify 2D features. dVp/dVs is compared to 1D reference.
+## The ">" marks the begin of a new region. For example:
+## There's some tools in SRC/Shapes to create the theta/depth.
+##
+## Will check if the depth is between 0 ~ 6371
+## Will check properties can't be <-100%
+## Will NOT check whether the input 2D region is valid shape.
 ##
 ## > dVp1 dVs1 dRho1 (in %)
 ## theta,depth
@@ -111,12 +128,11 @@
 ## theta,depth
 ## ...
 ##
-## >  !!! Seal this section with a ">" (the last region is not used) !!!
 <Polygons_BEGIN>
 
-> 0 -20 0
+> -10 -20 0
 
-29 2891
+29   2891
 29.005 2888
 29.01 2886.77
 29.015 2885.82
@@ -518,11 +534,9 @@
 30.995 2888
 31 2891
 
->
-
 <Polygons_END>
 
-# Plotting.
+# Plotting parameters (b01)
 
 <LineThicknessUseAmp>    1
 

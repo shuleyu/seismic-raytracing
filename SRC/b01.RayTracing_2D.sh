@@ -83,7 +83,7 @@ EOF
 
         RayColor=`head -n 1 ${file} | awk '{print $2}'`
         Amp=`head -n 1 ${file} | awk '{if ($8<0) A=-1; else A=1; printf "%.6lf",A*sqrt(A*$8)*4}'`
-        [ `echo "${Amp}<0" | bc` -eq 1 ] && RayColor="darkgreen"
+#         [ `echo "${Amp}<0" | bc` -eq 1 ] && RayColor="darkgreen"
         Amp=`echo ${Amp} | awk '{if ($1<0) printf "%.12f", -$1; else printf "%.12f", $1}'`
         [ `echo "${Amp}<0.1" | bc` -eq 1 ] && Amp=0.1
         [ ${LineThicknessUseAmp} -ne 1 ] && Amp=0.5

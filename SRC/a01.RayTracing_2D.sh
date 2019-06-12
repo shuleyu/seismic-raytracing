@@ -18,7 +18,7 @@ trap "rm -f ${WORKDIR}/tmpfile*$$ ${WORKDIR}/*_${RunNumber}; exit 1" SIGINT
 # ==============================================
 
 # C++ code.
-${EXECDIR}/TraceIt.out 7 8 0 << EOF
+${EXECDIR}/TraceIt.out 7 8 1 << EOF
 ${DebugInfo}
 ${TS}
 ${TD}
@@ -34,6 +34,7 @@ ${WORKDIR}/tmpfile_Polygons_${RunNumber}
 ${WORKDIR}/${ReceiverFileName}
 ${PolygonFilePrefix}
 ${RayFilePrefix}
+${RectifyLimit}
 EOF
 
 [ $? -ne 0 ] && echo "C++ code Failed ..." && rm -f tmpfile*$$ && exit 1
