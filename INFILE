@@ -109,8 +109,8 @@
 ## Region settings.
 <RectifyLimit>       1
                      -- float value (in km).
-                     -- Will take the polygon input and refine it.
-                     -- The maximum segment length in the refine result is this value.
+                     -- Will take the polygon input (see the below section) and refine it.
+                     -- The maximum polygon segment length in the refine result is set here.
 
 ## Specify 2D features. dVp/dVs is compared to 1D reference.
 ## The ">" marks the begin of a new region. For example:
@@ -536,15 +536,18 @@
 
 <Polygons_END>
 
+# If you don't need plotting, the parameters below can be ignored.
+# For GMT4 installed users, set these parameters and run b01 to produce figures.
 # Plotting parameters (b01)
 
 <LineThicknessUseAmp>    1
 
-## Plot size and centering settings.
-## These locations will be plotted at the center of the page.
+## Plot size and centering position.
+## Each line will be one figure.
+## These points will be plotted at the center of the page.
 ##
 ## 3 columns:
-## plotsize (inches at diameter of the earth)  |  rotation theta (in deg)   |   depth(km)
+## zooming in (inches at diameter of the earth)  |  rotation theta (in deg)   |   depth(km)
 <PlotWhere_BEGIN>
 
 500  30.0    2891

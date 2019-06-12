@@ -26,6 +26,7 @@
 #include<ReadParameters.hpp>
 
 #define _TURNINGANGLE 89.99
+#define _RE 6371
 
 using namespace std;
 
@@ -43,7 +44,7 @@ class Ray {
         double Pt,Pr,TravelTime,TravelDist,RayP,Amp,Inc,Takeoff;
 
         Ray()=default;
-        Ray(bool p, bool g, bool l, string c, string cmp, 
+        Ray(bool p, bool g, bool l, string c, string cmp,
             int i,int rl, double th, double r, double t, double d, double rp,double to) :
             IsP(p), GoUp(g), GoLeft(l), Color(c), Comp(cmp), Debug(""),
             InRegion(i), Prev(-1), RemainingLegs(rl), Surfacing(0),
@@ -91,11 +92,13 @@ size_t findClosetDepth(const vector<double> &D, const double &d){
 }
 
 // generating rays born from RayHeads[i]
-void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<int> &Estimation, atomic<size_t> &Running,
-                   vector<string> &ReachSurfaces, vector<Ray> &RayHeads,
-                   double RE, int branches, const vector<double> &specialDepths, const vector<vector<double>> &R,
+void followThisRay(size_t i, atomic<size_t> &Cnt, atomic<int> &Estimation, atomic<size_t> &Running,
+                   vector<string> &ReachSurfaces, vector<string> &RayInfo,
+                   vector<vector<double>> &RaysTheta, vector<vector<double>> &RaysRadius,
+                   vector<Ray> &RayHeads, int branches,
+                   const vector<double> &specialDepths, const vector<vector<double>> &R,
                    const vector<vector<double>> &Vp,const vector<vector<double>> &Vs,const vector<vector<double>> &Rho,
-                   double MinInc, const vector<vector<pair<double,double>>> &Regions, const vector<vector<double>> &RegionBounds,
+                   const vector<vector<pair<double,double>>> &Regions, const vector<vector<double>> &RegionBounds,
                    const vector<double> &dVp, const vector<double> &dVs,const vector<double> &dRho){
 
     if (RayHeads[i].RemainingLegs==0) {
@@ -109,7 +112,7 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<int> &Estimation, atom
     /// ... among special depths.
 
     //// Which special depth is cloest to ray head depth?
-    double RayHeadDepth=RE-RayHeads[i].Pr;
+    double RayHeadDepth=_RE-RayHeads[i].Pr;
     size_t Cloest=findClosetDepth(specialDepths,RayHeadDepth);
 
     //// Next depth should be the cloest special depth at the correct side (ray is going up/down).
@@ -124,8 +127,8 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<int> &Estimation, atom
 
     /// ... among current 2D "Regions" vertical limits.
     int CurRegion=RayHeads[i].InRegion;
-    Top=max(Top,RE-RegionBounds[CurRegion][3]);
-    Bot=min(Bot,RE-RegionBounds[CurRegion][2]);
+    Top=max(Top,_RE-RegionBounds[CurRegion][3]);
+    Bot=min(Bot,_RE-RegionBounds[CurRegion][2]);
 
     // Print some debug info.
     if (P[DebugInfo]) {
@@ -133,11 +136,11 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<int> &Estimation, atom
         cout << '\n' << "----------------------" ;
         cout << '\n' << "Calculating    : " << RayHeads[i].Debug;
         cout << "\nStart in region       : " << CurRegion;
-        printf ("\nStart Location        : %.15lf deg, %.15lf km\n", RayHeads[i].Pt, RE-RayHeads[i].Pr);
+        printf ("\nStart Location        : %.15lf deg, %.15lf km\n", RayHeads[i].Pt, _RE-RayHeads[i].Pr);
         cout << "Will go as            : " << (RayHeads[i].IsP?"P, ":"S, ") << (RayHeads[i].GoUp?"Up, ":"Down, ")
              << (RayHeads[i].GoLeft?"Left":"Right") << endl;
         printf ("Ray tracing start, end: %.16lf --> %.16lf km with rayp: %.16lf sec/deg\n",Top,Bot,RayHeads[i].RayP);
-        printf ("Search region bounds  : %.16lf ~ %.16lf\n", RE-R[CurRegion][0],RE-R[CurRegion].back());
+        printf ("Search region bounds  : %.16lf ~ %.16lf\n", _RE-R[CurRegion][0],_RE-R[CurRegion].back());
         printf ("\nStart ray tracing ...\n\n");
         cout << flush;
     }
@@ -272,24 +275,20 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<int> &Estimation, atom
         size_t L1,L2,SearchRegion=(NextRegion==0?CurRegion:NextRegion);
         p2={NextPt_R,NextPr_R};
         q2={NextPt_T,NextPr_T};
+        pair<bool,pair<double,double>> res;
+
 
         for (L1=0;L1<Regions[SearchRegion].size();++L1){ // Search around the polygon.
             L2=(L1+1)%Regions[SearchRegion].size();
-            auto res=SegmentJunction(Regions[SearchRegion][L1],Regions[SearchRegion][L2],p2,q2);
+            res=SegmentJunction(Regions[SearchRegion][L1],Regions[SearchRegion][L2],p2,q2);
             if (res.first) break;
         }
         if (L1==Regions[SearchRegion].size())
             throw runtime_error("!!!!!!!!!!! Can't find junction! Bugs here !!!!!!!!!!!");
 
-
         // Find the junction point between ray and polygon boundary.
-        const pair<double,double> &p1=Regions[SearchRegion][L1],&q1=Regions[SearchRegion][L2];
-
-        double s1=(q1.second-p1.second)/(q1.first-p1.first),s2=(q2.second-p2.second)/(q2.first-p2.first);
-        auto junc=LineJunction(p1,s1,p2,s2);
-        JuncPt=junc.second.first;
-        JuncPr=junc.second.second;
-
+        JuncPt=res.second.first;
+        JuncPr=res.second.second;
 
         // Print some debug info.
         if (P[DebugInfo]) printf("Junction at       : %.15lf,%.15lf.\n",JuncPt,JuncPr);
@@ -303,6 +302,7 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<int> &Estimation, atom
 
 
         // Get the geometry of the boundary.
+        const pair<double,double> &p1=Regions[SearchRegion][L1],&q1=Regions[SearchRegion][L2];
         TiltAngle=180/M_PI*atan2(q1.second-p1.second,(q1.first-p1.first)*M_PI/180*JuncPr);
 
     }
@@ -351,12 +351,12 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<int> &Estimation, atom
 
 
     // Prepare to calculate reflection/refractoin(transmission) coefficients.
-    string Mode,AdaptedMode,Polarity=(RayHeads[i].Comp=="SH"?"SH":"PSV");
-    if (fabs(RE-NextPr_R)<MinInc) Mode="SA"; // At the surface.
-    else if (fabs(3480-NextPr_R)<MinInc) Mode=(RayHeads[i].GoUp?"LS":"SL"); // At the CMB.
-    else if (fabs(1221.5-NextPr_R)<MinInc) Mode=(RayHeads[i].GoUp?"SL":"LS"); // At the ICB.
-    else if (1221.5<NextPr_R && NextPr_R<3480) Mode="LL";
-    else Mode="SS"; // AdaptedMode is for 2D regions with extreme S velocity drop.
+    string Mode,Polarity=(RayHeads[i].Comp=="SH"?"SH":"PSV");
+    if (NextPr_R==_RE) Mode="SA"; // At the surface.
+    else if (NextPr_R==3480) Mode=(RayHeads[i].GoUp?"LS":"SL"); // At the CMB.
+    else if (NextPr_R==1221.5) Mode=(RayHeads[i].GoUp?"SL":"LS"); // At the ICB.
+    else if (1221.5<NextPr_R && NextPr_R<3480) Mode="LL"; // Within outer core.
+    else Mode="SS";
 
     double rho1,vp1,vs1,rho2,vp2,vs2,c1,c2;;
 
@@ -501,8 +501,8 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<int> &Estimation, atom
         printf("RayP          (RS): %.15lf deg\n\n",Rayp_rs);
 
         cout << "RayEnd at Index  :" << RayEnd-1 << " (inclusive) / " << RayLength << endl;
-        printf ("RayEnd at (for reflection)   :%.15lf deg, %.15lf (inclusive) km\n",NextPt_R,RE-NextPr_R);
-        printf ("RayEnd at (for transmission) :%.15lf deg, %.15lf (inclusive) km\n\n",NextPt_T,RE-NextPr_T);
+        printf ("RayEnd at (for reflection)   :%.15lf deg, %.15lf (inclusive) km\n",NextPt_R,_RE-NextPr_R);
+        printf ("RayEnd at (for transmission) :%.15lf deg, %.15lf (inclusive) km\n\n",NextPt_T,_RE-NextPr_T);
         cout << endl;
     }
 
@@ -513,20 +513,21 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<int> &Estimation, atom
     RayHeads[i].Inc=Incident;
 
 
-    // Output valid part ray paths.
-    if (P[RayFilePrefix]!="NONE") {
-        ofstream fpout(P[RayFilePrefix]+to_string(i+1));
-        fpout << "> " << (RayHeads[i].Color=="black"?(RayHeads[i].IsP?"blue":"red"):RayHeads[i].Color) << " "
-                      << (RayHeads[i].IsP?"P ":"S ") << RayHeads[i].TravelTime << " sec. " << RayHeads[i].Inc << " IncDeg. "
-                      << RayHeads[i].Amp << " DispAmp. " << RayHeads[i].TravelDist << " km. " << endl;
-        for (int j=0;j<RayEnd;++j)
-            fpout << RayHeads[i].Pt+M*degree[j] << " " << R[CurRegion][rIndex(j)] << '\n';
-        fpout.close();
+    // store ray paths.
+    stringstream ss;
+    ss << (RayHeads[i].Color=="black"?(RayHeads[i].IsP?"blue":"red"):RayHeads[i].Color) << " "
+          << (RayHeads[i].IsP?"P ":"S ") << RayHeads[i].TravelTime << " sec. " << RayHeads[i].Inc << " IncDeg. "
+          << RayHeads[i].Amp << " DispAmp. " << RayHeads[i].TravelDist << " km. ";
+    RayInfo[i]=ss.str();
+
+    for (int j=0;j<RayEnd;++j) {
+        RaysTheta[i].push_back(RayHeads[i].Pt+M*degree[j]);
+        RaysRadius[i].push_back(R[CurRegion][rIndex(j)]);
     }
 
     // If ray reaches surface, output info at the surface.
-    if (fabs(NextPr_R-RE)<MinInc) ++RayHeads[i].Surfacing;
-    if (fabs(NextPr_R-RE)<MinInc && (P[StopAtSurface]==0 || RayHeads[i].Surfacing<2)) {
+    if (NextPr_R==_RE) ++RayHeads[i].Surfacing;
+    if (NextPr_R==_RE && (P[StopAtSurface]==0 || RayHeads[i].Surfacing<2)) {
 
         // Accumulate the travel-time.
         int I=i;
@@ -568,19 +569,19 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<int> &Estimation, atom
     if (!RayHeads[i].GoUp && ans.second) ts=td=rd=false;
 
     /// if ray ends at the surface.
-    if (fabs(RE-NextPr_R)<MinInc) ts=td=false;
+    if (NextPr_R==_RE) ts=td=false;
 
     /// if ray goes down to CMB, no transmission S; if ray goes up to ICB, not transmission S.
-    if ((!RayHeads[i].GoUp && fabs(NextPr_T-3480)<MinInc) || (RayHeads[i].GoUp && fabs(NextPr_T-1221.5)<MinInc)) {
+    if ((!RayHeads[i].GoUp && NextPr_T==3480) || (RayHeads[i].GoUp && NextPr_T==1221.5)) {
         ts&=RayHeads[i].IsP;
         td&=(!RayHeads[i].IsP);
     }
 
     /// if ray goes down to ICB as P, no reflection S.
-    if (!RayHeads[i].GoUp && RayHeads[i].IsP && fabs(NextPr_R-1221.5)<MinInc) rd=false;
+    if (!RayHeads[i].GoUp && RayHeads[i].IsP && NextPr_R==1221.5) rd=false;
 
     /// if ray goes up to CMB as P, no reflection S.
-    if (RayHeads[i].GoUp && RayHeads[i].IsP && fabs(NextPr_R-3480)<MinInc) rd=false;
+    if (RayHeads[i].GoUp && RayHeads[i].IsP && NextPr_R==3480) rd=false;
 
     // Add new ray heads to "RayHeads" according to the rules ans reflection/refraction angle calculation results.
 
@@ -655,9 +656,8 @@ void followThisRay(size_t i,  atomic<size_t> &Cnt, atomic<int> &Estimation, atom
 }
 
 
-// dealt with inputs.
+// The main function mostly dealt with I/O.
 int main(int argc, char **argv){
-
 
     P=ReadParameters<PI,PS,PF> (argc,argv,cin,FLAG1,FLAG2,FLAG3);
 
@@ -668,7 +668,7 @@ int main(int argc, char **argv){
     double theta,depth,takeoff;
     vector<int> initRaySteps,initRayComp,initRayColor;
     vector<double> initRayTheta,initRayDepth,initRayTakeoff;
-    
+
     fpin.open(P[InputRays]);
     while (fpin >> theta >> depth >> takeoff >> comp >> color >> steps){
         // check.
@@ -793,33 +793,21 @@ int main(int argc, char **argv){
     // vector<double> initRayTheta,initRayDepth,initRayTakeoff,gridDepth1,gridDepth2,gridInc,specialDepths;
     // vector<vector<double>> Deviation,regionProperties,regionPolygonsTheta,regionPolygonsDepth;
     //
-    // For future I/O modification, you can stops here.
+    // For future I/O modification, you can starts here.
 
-    const double RE=6371;
-
-    // For plotting: 1D reference property deviation depths.
-    if (!Deviation.empty() && P[PolygonFilePrefix]!="NONE"){
-        ofstream fpout(P[PolygonFilePrefix]+"0");
-        for (const auto &item:Deviation) {
-            fpout << ">\n";
-            for (double t=0;t<360;t=t+0.1) fpout << t << " " << RE-item[0] << '\n';
-            fpout << ">\n";
-            for (double t=0;t<360;t=t+0.1) fpout << t << " " << RE-item[1] << '\n';
-        }
-        fpout.close();
-    }
 
 
     // Create 1D reference layers. (R[0]. 0 means 1D reference model)
     vector<vector<double>> R{vector<double> ()};
     for (size_t i=0;i<gridDepth1.size();++i){
-        auto tmpr=CreateGrid(RE-gridDepth2[i],RE-gridDepth1[i],gridInc[i],2);
+        auto tmpr=CreateGrid(_RE-gridDepth2[i],_RE-gridDepth1[i],gridInc[i],2);
         if (!R[0].empty()) R[0].pop_back();
         R[0].insert(R[0].end(),tmpr.rbegin(),tmpr.rend());
     }
 
 
-    // Fix round-off-errors: adding exact values in special depths and modefied 1D model to R[0].
+    // Fix round-off-errors:
+    // adding the exact double values in A. special depths and B. modefied 1D model to R[0].
     set<double> depthToCorrect(specialDepths.begin(),specialDepths.end());
     for (const auto &item:Deviation) {
         depthToCorrect.insert(item[0]);
@@ -827,36 +815,28 @@ int main(int argc, char **argv){
     }
     vector<double> tmpArray;
     swap(R[0],tmpArray);
-    tmpArray[0]=RE;tmpArray.back()=0;
+    tmpArray[0]=_RE;tmpArray.back()=0;
     auto it=depthToCorrect.begin();
     for (int i=0;i<(int)tmpArray.size();++i) {
         if (it==depthToCorrect.end())
             R[0].push_back(tmpArray[i]);
-        else if (tmpArray[i]==RE-*it) {
+        else if (tmpArray[i]==_RE-*it) {
             R[0].push_back(tmpArray[i]);
             ++it;
         }
-        else if (tmpArray[i]>RE-*it) {
+        else if (tmpArray[i]>_RE-*it) {
             R[0].push_back(tmpArray[i]);
         }
         else {
-            R[0].push_back(RE-*it);
+            R[0].push_back(_RE-*it);
             ++it;
             --i;
         }
     }
     while (it!=depthToCorrect.end()){
-        R[0].push_back(RE-*it);
+        R[0].push_back(_RE-*it);
         ++it;
     }
-
-
-    // ?? What's this for?
-    // Find the minimum layer increment for later use. (To solve floating point number round-off-error-related issues)
-    double MinInc=numeric_limits<double>::max();
-    for (size_t i=1;i<R[0].size();++i) MinInc=min(MinInc,R[0][i-1]-R[0][i]);
-
-
 
     // Find the bounds of input polygons.
     vector<vector<double>> RegionBounds{{-numeric_limits<double>::max(),numeric_limits<double>::max(),
@@ -868,7 +848,7 @@ int main(int argc, char **argv){
         for (size_t j=0;j<regionPolygonsTheta[i].size();++j){
             size_t k=(j+1)%regionPolygonsTheta[i].size();
             double theta1=regionPolygonsTheta[i][j],theta2=regionPolygonsTheta[i][k];
-            double radius1=RE-regionPolygonsDepth[i][j],radius2=RE-regionPolygonsDepth[i][k];
+            double radius1=_RE-regionPolygonsDepth[i][j],radius2=_RE-regionPolygonsDepth[i][k];
 
             Xmin=min(Xmin,theta1);Xmax=max(Xmax,theta2);
             Ymin=min(Ymin,radius1);Ymax=max(Ymax,radius2);
@@ -896,7 +876,7 @@ int main(int argc, char **argv){
 
             // Find the fine enough rectify for this section.
             size_t k=(j+1)%regionPolygonsTheta[i].size();
-            double radius1=RE-regionPolygonsDepth[i][j],radius2=RE-regionPolygonsDepth[i][k];
+            double radius1=_RE-regionPolygonsDepth[i][j],radius2=_RE-regionPolygonsDepth[i][k];
             double theta1=regionPolygonsTheta[i][j],theta2=regionPolygonsTheta[i][k];
 
             if (radius1==RegionBounds[i+1][2]) radius1=R[0][adjustedYmin[i+1]];
@@ -907,32 +887,22 @@ int main(int argc, char **argv){
             double Tdist=theta2-theta1,Rdist=radius2-radius1;
 
             size_t NPTS=2;
-            double dL=RE,dR,dT;
+            double dL=_RE,dR,dT;
             while (dL>P[RectifyLimit]){
                 NPTS*=2;
                 dR=Rdist/(NPTS-1),dT=Tdist/(NPTS-1);
                 dL=LocDist(theta1,0,radius1,theta1+dT,0,radius1+dR);
             }
 
-            // Add rectified section to this polygon.
-            for (size_t l=0;l+1<NPTS;++l)
-                tmpRegion.push_back(make_pair(theta1+l*dT,radius1+l*dR));
+            // Add rectified segments to this polygon.
+            for (size_t k=0;k+1<NPTS;++k)
+                tmpRegion.push_back(make_pair(theta1+k*dT,radius1+k*dR));
         }
 
         // Add this rectified polygon to region array.
         Regions.push_back(tmpRegion);
 
     }
-
-    // Output regions.
-    if (P[PolygonFilePrefix]!="NONE"){
-        for (size_t i=1;i<Regions.size();++i) {
-            ofstream fpout(P[PolygonFilePrefix]+to_string(i));
-            for (const auto &item:Regions[i]) fpout << item.first << " " << item.second << '\n';
-            fpout.close();
-        }
-    }
-
 
     // adjust bounds to the values in R[0].
     for (size_t i=0;i<regionPolygonsTheta.size();++i){
@@ -952,14 +922,37 @@ int main(int argc, char **argv){
         dRho.push_back(1.0+regionProperties[i][2]/100);
     }
 
-    // derive properties for all regions.
+    // derive properties layers for all regions (include 1D reference).
     vector<vector<double>> Vp(R.size(),vector<double> ()),Vs=Vp,Rho=Vp;
     for (size_t i=0;i<R.size();++i) {
         for (const auto &item:R[i]) {
-            auto ans=MakeRef(RE-item,Deviation);
+            auto ans=MakeRef(_RE-item,Deviation);
             Vp[i].push_back(dVp[i]*ans[0]);
             Vs[i].push_back(dVs[i]*ans[1]);
             Rho[i].push_back(dRho[i]*ans[2]);
+        }
+    }
+
+
+    // Output.
+    // For plotting: 1D reference property deviation depths.
+    if (!Deviation.empty() && P[PolygonFilePrefix]!="NONE"){
+        ofstream fpout(P[PolygonFilePrefix]+"0");
+        for (const auto &item:Deviation) {
+            fpout << ">\n";
+            for (double t=0;t<360;t=t+0.1) fpout << t << " " << _RE-item[0] << '\n';
+            fpout << ">\n";
+            for (double t=0;t<360;t=t+0.1) fpout << t << " " << _RE-item[1] << '\n';
+        }
+        fpout.close();
+    }
+
+    // Output rectified regions.
+    if (P[PolygonFilePrefix]!="NONE"){
+        for (size_t i=1;i<Regions.size();++i) {
+            ofstream fpout(P[PolygonFilePrefix]+to_string(i));
+            for (const auto &item:Regions[i]) fpout << item.first << " " << item.second << '\n';
+            fpout.close();
         }
     }
 
@@ -976,18 +969,18 @@ int main(int argc, char **argv){
         // Source in any polygons?
         int rid=0;
         for (size_t i=1;i<Regions.size();++i)
-            if (PointInPolygon(Regions[i],make_pair(initRayTheta[i],RE-initRayDepth[i]),1,RegionBounds[i])) {rid=i;break;}
+            if (PointInPolygon(Regions[i],make_pair(initRayTheta[i],_RE-initRayDepth[i]),1,RegionBounds[i])) {rid=i;break;}
 
         // Calculate ray parameter.
         auto ans=MakeRef(initRayDepth[i],Deviation);
         double v=(initRayComp[i]==0?ans[0]*dVp[rid]:ans[1]*dVs[rid]);
-        double rayp=M_PI/180*(RE-initRayDepth[i])*sin(fabs(initRayTakeoff[i])/180*M_PI)/v;
+        double rayp=M_PI/180*(_RE-initRayDepth[i])*sin(fabs(initRayTakeoff[i])/180*M_PI)/v;
 
         // Push this ray into "RayHeads" for future processing.
         RayHeads.push_back(Ray(initRayComp[i]==0,fabs(initRayTakeoff[i])>=90,initRayTakeoff[i]<0,
                                (initRayColor[i]==0?"black":to_string(initRayColor[i])),
                                (initRayComp[i]==0?"P":(initRayComp[i]==1?"SV":"SH")),
-                               rid,initRaySteps[i],initRayTheta[i],RE-initRayDepth[i],0,0,rayp,initRayTakeoff[i]));
+                               rid,initRaySteps[i],initRayTheta[i],_RE-initRayDepth[i],0,0,rayp,initRayTakeoff[i]));
 
     }
 
@@ -1006,6 +999,8 @@ int main(int argc, char **argv){
     // For future legs generated by reflction/refraction, create new "Ray" and assign it to the proper position in "RayHeads" vector.
     vector<thread> allThread(RayHeads.capacity());
     vector<string> ReachSurfaces(RayHeads.capacity());
+    vector<string> RayInfo(RayHeads.capacity());
+    vector<vector<double>> RaysTheta(RayHeads.capacity(),vector<double> ()),RaysRadius=RaysTheta;
 
     size_t Doing=0,Done=0;
     atomic<size_t> Running;
@@ -1014,9 +1009,10 @@ int main(int argc, char **argv){
 
         if (Running.load()<(size_t)P[nThread] && Doing<Cnt.load()) {
             Running.fetch_add(1);
-            allThread[Doing]=thread(followThisRay,Doing, std::ref(Cnt), std::ref(Estimation), std::ref(Running), std::ref(ReachSurfaces),
-                             std::ref(RayHeads), RE, branches, std::cref(specialDepths),
-                             std::cref(R),std::cref(Vp),std::cref(Vs),std::cref(Rho),MinInc,
+            allThread[Doing]=thread(followThisRay,Doing, std::ref(Cnt), std::ref(Estimation), std::ref(Running),
+                             std::ref(ReachSurfaces),std::ref(RayInfo), std::ref(RaysTheta), std::ref(RaysRadius),
+                             std::ref(RayHeads), branches, std::cref(specialDepths),
+                             std::cref(R),std::cref(Vp),std::cref(Vs),std::cref(Rho),
                              std::cref(Regions),std::cref(RegionBounds),std::cref(dVp),std::cref(dVs),std::cref(dRho));
             if (Doing>0 && Doing%10000==0) {
                 for (size_t i=Done;i<Doing-P[nThread];++i)
@@ -1037,6 +1033,18 @@ int main(int argc, char **argv){
     for (const string &s: ReachSurfaces)
         fpout << s;
     fpout.close();
+
+    // Output valid part ray paths.
+    if (P[RayFilePrefix]!="NONE") {
+        for (size_t i=0;i<RayInfo.size();++i){
+            if (RayInfo[i].empty()) continue;
+            ofstream fpout(P[RayFilePrefix]+to_string(i+1));
+            fpout << "> " << RayInfo[i] << '\n';
+            for (size_t j=0;j<RaysTheta[i].size();++j)
+                fpout << RaysTheta[i][j] << " " << RaysRadius[i][j] << '\n';
+            fpout.close();
+        }
+    }
 
 cout << Cnt.load() << "/" << RayHeads.capacity() << "/" << Estimation.load() << endl;
 
