@@ -232,10 +232,9 @@ void PreprocessAndRun(
 
         // Push this ray into "RayHeads" for future processing.
         RayHeads.push_back(Ray(initRayComp[i]==0,fabs(initRayTakeoff[i])>=90,initRayTakeoff[i]<0,
-                    (initRayColor[i]==0?"black":to_string(initRayColor[i])),
                     (initRayComp[i]==0?"P":(initRayComp[i]==1?"SV":"SH")),
-                    (int)rid,initRaySteps[i],initRayTheta[i],_RE-initRayDepth[i],0,0,rayp,initRayTakeoff[i]));
-
+                    (int)rid,initRaySteps[i],initRayColor[i],
+                    initRayTheta[i],_RE-initRayDepth[i],0,0,rayp,initRayTakeoff[i]));
     }
 
     atomic<size_t> Cnt;
@@ -709,9 +708,9 @@ void followThisRay(
 
     // store ray paths.
     stringstream ss;
-    ss << (RayHeads[i].Color=="black"?(RayHeads[i].IsP?"blue":"red"):RayHeads[i].Color) << " "
-        << (RayHeads[i].IsP?"P ":"S ") << RayHeads[i].TravelTime << " sec. " << RayHeads[i].Inc << " IncDeg. "
-        << RayHeads[i].Amp << " DispAmp. " << RayHeads[i].TravelDist << " km. ";
+    ss << RayHeads[i].Color << " "
+       << (RayHeads[i].IsP?"P ":"S ") << RayHeads[i].TravelTime << " sec. " << RayHeads[i].Inc << " IncDeg. "
+       << RayHeads[i].Amp << " DispAmp. " << RayHeads[i].TravelDist << " km. ";
     string tmpstr=ss.str();
     RayInfoSize[i]=(int)tmpstr.size()+1;
     RayInfo[i]=(char *)malloc((tmpstr.size()+1)*sizeof(char));

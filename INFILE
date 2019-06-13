@@ -41,7 +41,7 @@
 ## source settings.
 ## Will convert source theta to 0 ~ 360, this is the source location.
 ## Will convert take off angle to -180 ~ 180, negative means takeoff to the left-hand side.
-## Coloring: assign a fixed color (integer) to each initial sources and all its child rays.
+## Coloring: assign a fixed color (integer) to each initial sources, this color will be pass along to all its child rays.
 ##
 ## Will check if source depth is within Earth's interior.
 ## Will check if component is amoung "P","SV","SH".

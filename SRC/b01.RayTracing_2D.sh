@@ -19,6 +19,16 @@ gmtset ANNOT_FONT_SIZE_PRIMARY = 8p
 gmtset LABEL_FONT_SIZE = 10p
 gmtset LABEL_OFFSET = 0.05c
 
+color[1]=darkred
+color[2]=green
+color[3]=lightblue
+color[4]=purple
+color[5]=lightgreen
+color[6]=cyan
+color[7]=darkblue
+color[8]=gold
+color[9]=yellow
+
 # ================================================
 #         ! Work Begin !
 # ================================================
@@ -82,13 +92,21 @@ EOF
 #         [ ${FinalDist} -eq 0 ] && continue
 
         RayColor=`head -n 1 ${file} | awk '{print $2}'`
+        RayType=`head -n 1 ${file} | awk '{print $3}'`
+        if [ ${RayColor} = "0" ]
+        then
+            [ ${RayType} = "P" ] && plotColor="blue" || plotColor="red"
+        else 
+            plotColor=${color[$RayColor]}
+        fi
+
         Amp=`head -n 1 ${file} | awk '{if ($8<0) A=-1; else A=1; printf "%.6lf",A*sqrt(A*$8)*4}'`
-#         [ `echo "${Amp}<0" | bc` -eq 1 ] && RayColor="darkgreen"
+        [ `echo "${Amp}<0" | bc` -eq 1 ] && plotColor="darkgreen"
         Amp=`echo ${Amp} | awk '{if ($1<0) printf "%.12f", -$1; else printf "%.12f", $1}'`
         [ `echo "${Amp}<0.1" | bc` -eq 1 ] && Amp=0.1
         [ ${LineThicknessUseAmp} -ne 1 ] && Amp=0.5
 
-        psxy ${file} ${PROJ} ${REG} -W${Amp}p,${RayColor} -m -O -K >> ${OUTFILE}
+        psxy ${file} ${PROJ} ${REG} -W${Amp}p,${plotColor} -m -O -K >> ${OUTFILE}
     done
 
     for file in `ls ${WORKDIR}/${RayFilePrefix}*`
