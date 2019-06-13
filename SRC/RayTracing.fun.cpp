@@ -67,8 +67,9 @@ void PreprocessAndRun(
 
     // Ray nodes.
     vector<Ray> RayHeads;
-    if (potentialSize>RayHeads.max_size())
+    if (potentialSize>RayHeads.max_size()) {
         throw runtime_error("Too many rays to handle: decrease the number of legs or the number of input rays...");
+    }
 
     // Create 1D reference layers. (R[0]. 0 means 1D reference model)
 
@@ -161,10 +162,11 @@ void PreprocessAndRun(
             double Tdist=theta2-theta1,Rdist=radius2-radius1;
 
             size_t NPTS=2;
-            double dL=_RE,dR,dT;
+            double dL=_RE,dR=Rdist,dT=Tdist;
             while (dL>RectifyLimit){
                 NPTS*=2;
-                dR=Rdist/(NPTS-1),dT=Tdist/(NPTS-1);
+                dR=Rdist/(NPTS-1);
+                dT=Tdist/(NPTS-1);
                 dL=LocDist(theta1,0,radius1,theta1+dT,0,radius1+dR);
             }
 
@@ -176,7 +178,7 @@ void PreprocessAndRun(
         // Add this rectified polygon to region array.
         Regions.push_back(tmpRegion);
 
-        RegionN[i]=tmpRegion.size();
+        RegionN[i]=(int)tmpRegion.size();
         RegionsTheta[i]=(double *)malloc(tmpRegion.size()*sizeof(double));
         RegionsRadius[i]=(double *)malloc(tmpRegion.size()*sizeof(double));
         for (int j=0;j<RegionN[i];++j){
@@ -219,7 +221,7 @@ void PreprocessAndRun(
     for (size_t i=0;i<initRaySteps.size();++i){
 
         // Source in any polygons?
-        int rid=0;
+        size_t rid=0;
         for (size_t i=1;i<Regions.size();++i)
             if (PointInPolygon(Regions[i],make_pair(initRayTheta[i],_RE-initRayDepth[i]),1,RegionBounds[i])) {rid=i;break;}
 
@@ -232,14 +234,14 @@ void PreprocessAndRun(
         RayHeads.push_back(Ray(initRayComp[i]==0,fabs(initRayTakeoff[i])>=90,initRayTakeoff[i]<0,
                     (initRayColor[i]==0?"black":to_string(initRayColor[i])),
                     (initRayComp[i]==0?"P":(initRayComp[i]==1?"SV":"SH")),
-                    rid,initRaySteps[i],initRayTheta[i],_RE-initRayDepth[i],0,0,rayp,initRayTakeoff[i]));
+                    (int)rid,initRaySteps[i],initRayTheta[i],_RE-initRayDepth[i],0,0,rayp,initRayTakeoff[i]));
 
     }
 
     atomic<size_t> Cnt;
     Cnt.store(RayHeads.size());
     atomic<int> Estimation;
-    Estimation.store(potentialSize);
+    Estimation.store((int)potentialSize);
     RayHeads.resize(potentialSize);
 
     // Start ray tracing. (Finally!)
@@ -391,13 +393,13 @@ void followThisRay(
             if (PointInPolygon(Regions[CurRegion],p,-1,RegionBounds[CurRegion])) continue; // ... and this point stays in that polygon.
             else { // ... but this point enters another polygon.
 
-                RayEnd=j;
+                RayEnd=(int)j;
 
                 // which region is the new leg entering?
                 for (size_t k=1;k<Regions.size();++k){
                     if ((int)k==CurRegion) continue;
                     if (PointInPolygon(Regions[k],p,1,RegionBounds[k])) {
-                        NextRegion=k;
+                        NextRegion=(int)k;
                         break;
                     }
                 }
@@ -408,8 +410,8 @@ void followThisRay(
         else { // New leg starts in 1D reference region. Search for the region it enters.
             for (size_t k=1;k<Regions.size();++k){
                 if (PointInPolygon(Regions[k],p,-1,RegionBounds[k])) { // If ray enters another region.
-                    RayEnd=j;
-                    NextRegion=k;
+                    RayEnd=(int)j;
+                    NextRegion=(int)k;
                     break;
                 }
             }
@@ -463,7 +465,7 @@ void followThisRay(
 
 
         // Find the junction between the last line segment (index: RayEnd-1 ~ RayEnd) and polygon boundary segment (index: L1 ~ L2).
-        size_t L1,L2,SearchRegion=(NextRegion==0?CurRegion:NextRegion);
+        size_t L1=0,L2=1,SearchRegion=(NextRegion==0?CurRegion:NextRegion);
         p2={NextPt_R,NextPr_R};
         q2={NextPt_T,NextPr_T};
         pair<bool,pair<double,double>> res;
@@ -474,8 +476,9 @@ void followThisRay(
             res=SegmentJunction(Regions[SearchRegion][L1],Regions[SearchRegion][L2],p2,q2);
             if (res.first) break;
         }
-        if (L1==Regions[SearchRegion].size())
+        if (L1==Regions[SearchRegion].size()) {
             throw runtime_error("!!!!!!!!!!! Can't find junction! Bugs here !!!!!!!!!!!");
+        }
 
         // Find the junction point between ray and polygon boundary.
         JuncPt=res.second.first;
@@ -500,7 +503,7 @@ void followThisRay(
     else { // If ray doesn't end pre-maturelly (stays in the same region and reflect/refract on horizontal intervals)
         // (one end point of the last line segment (index: RayEnd-1) is on the interface)
 
-        RayEnd=degree.size();
+        RayEnd=(int)degree.size();
         NextRegion=CurRegion;
 
         // Get futuer rays starting point.
@@ -710,7 +713,7 @@ void followThisRay(
         << (RayHeads[i].IsP?"P ":"S ") << RayHeads[i].TravelTime << " sec. " << RayHeads[i].Inc << " IncDeg. "
         << RayHeads[i].Amp << " DispAmp. " << RayHeads[i].TravelDist << " km. ";
     string tmpstr=ss.str();
-    RayInfoSize[i]=tmpstr.size()+1;
+    RayInfoSize[i]=(int)tmpstr.size()+1;
     RayInfo[i]=(char *)malloc((tmpstr.size()+1)*sizeof(char));
     strcpy(RayInfo[i],tmpstr.c_str());
 
@@ -727,7 +730,7 @@ void followThisRay(
     if (NextPr_R==_RE && (StopAtSurface==0 || RayHeads[i].Surfacing<2)) {
 
         // Accumulate the travel-time.
-        int I=i;
+        int I=(int)i;
         double tt=0;
         vector<int> hh;
         while (I!=-1) {
@@ -746,7 +749,7 @@ void followThisRay(
 
         string tmpstr=ss.str();
         if (!tmpstr.empty()) {
-            ReachSurfacesSize[i]=tmpstr.size()+1;
+            ReachSurfacesSize[i]=(int)tmpstr.size()+1;
             ReachSurfaces[i]=(char *)malloc((tmpstr.size()+1)*sizeof(char));
             strcpy(ReachSurfaces[i],tmpstr.c_str());
         }
@@ -791,7 +794,7 @@ void followThisRay(
 
     if (ts) {
         Ray newRay=RayHeads[i];
-        newRay.Prev=i;
+        newRay.Prev=(int)i;
         newRay.Pt=NextPt_T;
         newRay.Pr=NextPr_T;
         newRay.RayP=Rayp_ts;
@@ -807,7 +810,7 @@ void followThisRay(
     if (td) {
         Ray newRay=RayHeads[i];
         newRay.IsP=!newRay.IsP;
-        newRay.Prev=i;
+        newRay.Prev=(int)i;
         newRay.Pt=NextPt_T;
         newRay.Pr=NextPr_T;
         newRay.RayP=Rayp_td;
@@ -823,7 +826,7 @@ void followThisRay(
     if (rd) {
         Ray newRay=RayHeads[i];
         newRay.IsP=!newRay.IsP;
-        newRay.Prev=i;
+        newRay.Prev=(int)i;
         newRay.Pt=NextPt_R;
         newRay.Pr=NextPr_R;
         newRay.RayP=Rayp_rd;
@@ -843,7 +846,7 @@ void followThisRay(
     // rs is always possible.
     if (RS) {
         Ray newRay=RayHeads[i];
-        newRay.Prev=i;
+        newRay.Prev=(int)i;
         newRay.Pt=NextPt_R;
         newRay.Pr=NextPr_R;
         newRay.RayP=Rayp_rs;
