@@ -50,6 +50,78 @@ size_t findClosetDepth(const vector<double> &D, const double &d){
     }
 }
 
+void rayTracingInSwift(
+    int inputRayN, int *inputRaySteps, int *inputRayComp, int *inputRayColor,
+    double *inputRayTheta, double *inputRayDepth, double *inputRayTakeoff,
+    int inputGridN, double *inputGridDepth1, double *inputGridDepth2, double *inputGridInc,
+    int inputDepthN, double *inputSpecialDepths,
+    int inputDeviationN, double **inputDeviation,
+    int inputRegionN, double **inputRegionProperties,
+    int *inputRegionL, double **inputRegionPolygonsTheta, double **inputRegionPolygonsDepth,
+    double inputRectifyLimit, bool inputTS, bool inputTD, bool inputRS, bool inputRD, bool inputStopAtSurface,
+    int inputNThread,
+    char **ReachSurfaces, int *ReachSurfacesSize, char **RayInfo, int *RayInfoSize,
+    int *RegionN,double **RegionsTheta,double **RegionsRadius,
+    double **RaysTheta, int *RaysN, double **RaysRadius,int *Observer){
+
+
+    // Bridging variables for the C++ code.
+    vector<int> initRaySteps,initRayComp,initRayColor;
+    vector<double> initRayTheta,initRayDepth,initRayTakeoff,gridDepth1,gridDepth2,gridInc,specialDepths;
+    vector<vector<double>> Deviation,regionProperties,regionPolygonsTheta,regionPolygonsDepth;
+
+    for (int i=0;i<inputRayN;++i) {
+        initRaySteps.push_back(inputRaySteps[i]);
+        initRayComp.push_back(inputRayComp[i]);
+        initRayColor.push_back(inputRayColor[i]);
+        initRayTheta.push_back(inputRayTheta[i]);
+        initRayDepth.push_back(inputRayDepth[i]);
+        initRayTakeoff.push_back(inputRayTakeoff[i]);
+    }
+
+    for (int i=0;i<inputGridN;++i) {
+        gridDepth1.push_back(inputGridDepth1[i]);
+        gridDepth2.push_back(inputGridDepth2[i]);
+        gridInc.push_back(inputGridInc[i]);
+    }
+
+    for (int i=0;i<inputDepthN;++i)
+        specialDepths.push_back(inputSpecialDepths[i]);
+
+    for (int i=0;i<inputDeviationN;++i) {
+        Deviation.push_back(vector<double> ());
+        for (int j=0;j<5;++j)
+            Deviation.back().push_back(inputDeviation[i][j]);
+    }
+
+    for (int i=0;i<inputRegionN;++i){
+        regionProperties.push_back(vector<double> {inputRegionProperties[i][0],inputRegionProperties[i][1],inputRegionProperties[i][2]});
+        regionPolygonsTheta.push_back(vector<double> ());
+        regionPolygonsDepth.push_back(vector<double> ());
+        for (int j=0;j<inputRegionL[i];++j) {
+            regionPolygonsTheta.back().push_back(inputRegionPolygonsTheta[i][j]);
+            regionPolygonsDepth.back().push_back(inputRegionPolygonsDepth[i][j]);
+        }
+    }
+
+    double RectifyLimit=inputRectifyLimit;
+    bool TS=inputTS,TD=inputTD,RS=inputRS,RD=inputRD,DebugInfo=false,StopAtSurface=inputStopAtSurface;
+    size_t nThread=(size_t)inputNThread,potentialSize=0;
+    int branches=TS+TD+RS+RD;
+    for (size_t i=0;i<initRaySteps.size();++i){
+        if (branches<=1) potentialSize+=initRaySteps[i];
+        else potentialSize+=(1-pow(branches,initRaySteps[i]))/(1-branches);
+    }
+
+    // Call the C++ code.
+    PreprocessAndRun(
+        initRaySteps,initRayComp,initRayColor,
+        initRayTheta,initRayDepth,initRayTakeoff,gridDepth1,gridDepth2,gridInc,specialDepths,
+        Deviation,regionProperties,regionPolygonsTheta,regionPolygonsDepth,
+        RectifyLimit,TS,TD,RS,RD,nThread,DebugInfo,StopAtSurface,(size_t)branches,potentialSize,
+        ReachSurfaces,ReachSurfacesSize,RayInfo,RayInfoSize,RegionN,RegionsTheta,RegionsRadius,RaysTheta,RaysN,RaysRadius,Observer);
+}
+
 void PreprocessAndRun(
         const vector<int> &initRaySteps,const vector<int> &initRayComp,const vector<int> &initRayColor,
         const vector<double> &initRayTheta,const vector<double> &initRayDepth,const vector<double> &initRayTakeoff,
@@ -58,9 +130,11 @@ void PreprocessAndRun(
         const vector<vector<double>> &regionProperties,
         const vector<vector<double>> &regionPolygonsTheta,
         const vector<vector<double>> &regionPolygonsDepth,
+
         const double &RectifyLimit, const bool &TS, const bool &TD, const bool &RS, const bool &RD,
         const size_t &nThread, const bool &DebugInfo, const bool &StopAtSurface,
         const size_t &branches, const size_t &potentialSize,
+
         char **ReachSurfaces, int *ReachSurfacesSize, char **RayInfo, int *RayInfoSize,
         int *RegionN,double **RegionsTheta,double **RegionsRadius,
         double **RaysTheta, int *RaysN, double **RaysRadius,int *Observer){
