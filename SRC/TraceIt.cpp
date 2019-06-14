@@ -155,6 +155,7 @@ int main(int argc, char **argv){
         if (branches<=1) potentialSize+=initRaySteps[i];
         else potentialSize+=(1-pow(branches,initRaySteps[i]))/(1-branches);
     }
+
     int *Observer=(int *)malloc(1*sizeof(int));
     *Observer=-1;
 
