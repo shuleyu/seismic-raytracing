@@ -134,6 +134,10 @@ int main(int argc, char **argv){
             regionPolygonsDepth.back().push_back(depth);
         }
     }
+    if (regionPolygonsTheta.back().empty()) {
+        regionPolygonsTheta.pop_back();
+        regionPolygonsDepth.pop_back();
+    }
     fpin.close();
 
 

@@ -14,8 +14,8 @@ using namespace std;
 int main(){
     ofstream fpout("Gaussian");
 
-    double X0=31.226,Y0=2891;
-    double dt=0.005,L=7.5,H=7.5,sigma=0.8493218;
+    double X0=30,Y0=2891;
+    double dt=0.005,L=2,H=30,sigma=0.8493218;
 
     vector<double> A;
     for (size_t i=0;i<L/dt;++i){

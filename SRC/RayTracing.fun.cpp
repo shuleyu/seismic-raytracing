@@ -540,8 +540,8 @@ void followThisRay(
     // Add rules of: (t)ransmission/refrection and (r)eflection to (s)ame or (d)ifferent way type.
     // Notice reflection with the same wave type is always allowed. ("rs" is always possible)
 
-    /// if ray going down and turns.
-    if (!RayHeads[i].GoUp && ans.second) ts=td=rd=false;
+    /// if ray going down and turns and didn't hit the junction.
+    if (!RayHeads[i].GoUp && ans.second && CurRegion==NextRegion) ts=td=rd=false;
 
     /// if ray ends at the surface.
     if (NextPr_R==_RE) ts=td=false;
