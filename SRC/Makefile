@@ -2,7 +2,7 @@
 # Notice: the order of library names in LIBS could matter.
 COMP      := c++ -std=c++14 -Wall
 OUTDIR    := .
-INCDIR    := -I./CPP-Library -I.
+INCDIR    := -I./CPP-Library-Headers -I.
 LIBDIR    := -L.
 LIBS      := -lpthread -lm
 

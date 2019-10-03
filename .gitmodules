@@ -1,0 +1,4 @@
+[submodule "SRC/CPP-Library-Headers"]
+	path = SRC/CPP-Library-Headers
+	url = https://github.com/shuleyu/CPP-Library-Headers.git
+	branch = master
