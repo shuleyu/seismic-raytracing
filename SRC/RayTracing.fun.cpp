@@ -114,6 +114,18 @@ void followThisRay(
     auto ans=RayPath(R[CurRegion],v[CurRegion],RayHeads[i].RayP,Top,Bot,degree,lastRadiusIndex,_TURNINGANGLE);
 
 
+    // Fix the turnning flag. Because the velocity in Bot could be changed (different 1D model), the turnning judged by RayPath
+    // may not be corrent under this case.
+    if (fabs(_RE-R[CurRegion][lastRadiusIndex]-Bot)<1e-6) ans.second=false; 
+    else ans.second=true; 
+
+    if (DebugInfo) {
+        cout << "Ray turns? " << (ans.second?"Yes":"No") << ". Actual happened: " << _RE-R[CurRegion][lastRadiusIndex] << " / " << Bot << endl;
+        cout << flush;
+    }
+
+
+
     // If the new leg is trivia, no further operation needed.
     size_t RayLength=degree.size();
     if (RayLength==1) {
@@ -509,7 +521,7 @@ void followThisRay(
 
         stringstream ss;
         ss << RayHeads[hh.back()].Takeoff << " " << RayHeads[i].RayP << " " << RayHeads[i].Inc << " " << NextPt_R << " "
-            << tt << " " << RayHeads[i].Amp << " " << RayHeads[i].RemainingLegs << " ";
+            << tt << " " << RayHeads[i].Amp << " " << RayHeads[i].RemainingLegs << " " << (RayHeads[i].Turn?"1":"0") << " ";
         for (auto rit=hh.rbegin();rit!=hh.rend();++rit)
             ss << (RayHeads[*rit].IsP?(RayHeads[*rit].GoUp?"p":"P"):(RayHeads[*rit].GoUp?"s":"S")) << ((*rit)==*hh.begin()?" ":"->");
         for (auto rit=hh.rbegin();rit!=hh.rend();++rit)
@@ -539,6 +551,9 @@ void followThisRay(
 
     // Add rules of: (t)ransmission/refrection and (r)eflection to (s)ame or (d)ifferent way type.
     // Notice reflection with the same wave type is always allowed. ("rs" is always possible)
+
+    /// Mark it when ray turns.
+    if (!RayHeads[i].Turn && ans.second && RayEnd==RayLength) RayHeads[i].Turn=true;
 
     /// if ray going down and turns and didn't hit the junction.
     if (!RayHeads[i].GoUp && ans.second && CurRegion==NextRegion) ts=td=rd=false;

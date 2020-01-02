@@ -40,7 +40,7 @@ RE="6371.0"
 
 # Plot.
 Cnt=0
-while read PLOTSIZE Theta Radius
+while read PLOTSIZE Theta Radius LineThickness
 do
     Cnt=$((Cnt+1))
     OUTFILE=${Cnt}.ps
@@ -100,7 +100,7 @@ EOF
             plotColor=${color[$RayColor]}
         fi
 
-        Amp=`head -n 1 ${file} | awk '{if ($8<0) A=-1; else A=1; printf "%.6lf",A*sqrt(A*$8)*4}'`
+        Amp=`head -n 1 ${file} | awk -v T=${LineThickness} '{if ($8<0) A=-1; else A=1; printf "%.6lf",A*sqrt(A*$8)*T}'`
         [ `echo "${Amp}<0" | bc` -eq 1 ] && plotColor="darkgreen"
         Amp=`echo ${Amp} | awk '{if ($1<0) printf "%.12f", -$1; else printf "%.12f", $1}'`
         [ `echo "${Amp}<0.1" | bc` -eq 1 ] && Amp=0.1

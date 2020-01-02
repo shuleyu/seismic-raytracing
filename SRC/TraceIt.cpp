@@ -134,7 +134,7 @@ int main(int argc, char **argv){
             regionPolygonsDepth.back().push_back(depth);
         }
     }
-    if (regionPolygonsTheta.back().empty()) {
+    if (!regionPolygonsTheta.empty() && regionPolygonsTheta.back().empty()) {
         regionPolygonsTheta.pop_back();
         regionPolygonsDepth.pop_back();
     }
@@ -195,7 +195,7 @@ int main(int argc, char **argv){
     // If I/O changes, change this part.
 
     ofstream fpout(P[ReceiverFileName]);
-    fpout << "<Takeoff> <Rayp> <Incident> <Dist> <TravelTime> <DispAmp> <RemainingLegs> <WaveTypeTrain> <RayTrain>" << '\n';
+    fpout << "<Takeoff> <Rayp> <Incident> <Dist> <TravelTime> <DispAmp> <RemainingLegs> <rayTurns> <WaveTypeTrain> <RayTrain>" << '\n';
     for (size_t i=0;i<potentialSize;++i)
         if (ReachSurfacesSize[i]!=0)
             fpout << string(ReachSurfaces[i]) << '\n';

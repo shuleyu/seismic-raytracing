@@ -22,13 +22,13 @@
 #include<Lon2180.hpp>
 #include<Lon2360.hpp>
 
-#define _TURNINGANGLE 89.99
+#define _TURNINGANGLE 89.999
 #define _RE 6371
 
 // Define the ray node.
 class Ray {
     public:
-        bool IsP,GoUp,GoLeft;
+        bool IsP,GoUp,GoLeft,Turn;
         std::string Comp,Debug;
         int InRegion,Prev,RemainingLegs,Surfacing,Color;
         double Pt,Pr,TravelTime,TravelDist,RayP,Amp,Inc,Takeoff;
@@ -36,7 +36,7 @@ class Ray {
         Ray()=default;
         Ray(bool p, bool g, bool l, std::string cmp,
             int i,int rl, int c, double th, double r, double t, double d, double rp,double to) :
-            IsP(p), GoUp(g), GoLeft(l), Comp(cmp), Debug(""),
+            IsP(p), GoUp(g), GoLeft(l), Turn(false), Comp(cmp), Debug(""),
             InRegion(i), Prev(-1), RemainingLegs(rl), Surfacing(0),Color(c),
             Pt(th),Pr(r),TravelTime(t),TravelDist(d), RayP(rp), Amp(1),Inc(0), Takeoff(to) {}
 };
