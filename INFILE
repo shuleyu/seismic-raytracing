@@ -1,7 +1,7 @@
 
 # Output directory and output filenames (or prefix).
 
-<WORKDIR>             /Volumes/Homes/shuleyu/PROJ_Fast/t058.tmp
+<WORKDIR>             /Volumes/Homes/shuleyu/PROJ_Fast/t058.tmp2
 
 <ReceiverFileName>    Receivers.txt
 
@@ -62,6 +62,8 @@
 0   500    21    P    0    6
 0   500    20    P    0    6
 0   500    19    P    0    6
+0   500    18    P    0    6
+0   500    17    P    0    6
 
 <InputRays_END>
 

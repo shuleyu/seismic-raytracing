@@ -46,7 +46,7 @@ std::vector<double> MakeRef(const double &depth,const std::vector<std::vector<do
 std::size_t findClosetLayer(const std::vector<double> &R, const double &r);
 std::size_t findClosetDepth(const std::vector<double> &D, const double &d);
 void followThisRay(
-    std::size_t i, std::atomic<std::size_t> &Cnt, std::atomic<int> &Estimation, std::atomic<std::size_t> &Running,
+    size_t i, size_t mySlot, std::atomic<size_t> &finalSize,
     char **ReachSurfaces, int *ReachSurfacesSize, char **RayInfo, int *RayInfoSize,
     double **RaysTheta, int *RaysN, double **RaysRadius,
     std::vector<Ray> &RayHeads, int branches, const std::vector<double> &specialDepths,

@@ -1,3 +1,5 @@
+#include<queue>
+
 #include<Ray.hpp>
 
 #include<CreateGrid.hpp>
@@ -10,6 +12,10 @@
 #include<PlaneWaveCoefficients.hpp>
 
 using namespace std;
+
+mutex mtx;
+condition_variable cv;
+queue<size_t> emptySlot;
 
 // Utilities for 1D-altering the PREM model.
 vector<double> MakeRef(const double &depth,const vector<vector<double>> &dev){
@@ -52,7 +58,7 @@ size_t findClosetDepth(const vector<double> &D, const double &d){
 
 // generating rays born from RayHeads[i]
 void followThisRay(
-    size_t i, atomic<size_t> &Cnt, atomic<int> &Estimation, atomic<size_t> &Running,
+    size_t i, size_t mySlot, atomic<size_t> &finalSize,
     char **ReachSurfaces, int *ReachSurfacesSize, char **RayInfo, int *RayInfoSize,
     double **RaysTheta, int *RaysN, double **RaysRadius,
     vector<Ray> &RayHeads, int branches, const vector<double> &specialDepths,
@@ -62,8 +68,10 @@ void followThisRay(
     const vector<double> &dVp, const vector<double> &dVs,const vector<double> &dRho,
     const bool &DebugInfo,const bool &TS,const bool &TD,const bool &RS,const bool &RD, const bool &StopAtSurface){
 
-    if (RayHeads[i].RemainingLegs==0) {
-        Running.fetch_sub(1);
+    if (RayHeads[i].RemainingLegs==0 || i>=finalSize.load()) {
+        unique_lock<mutex> lck(mtx);
+        emptySlot.push(mySlot);
+        cv.notify_one();
         return;
     }
 
@@ -116,8 +124,8 @@ void followThisRay(
 
     // Fix the turnning flag. Because the velocity in Bot could be changed (different 1D model), the turnning judged by RayPath
     // may not be corrent under this case.
-    if (fabs(_RE-R[CurRegion][lastRadiusIndex]-Bot)<1e-6) ans.second=false; 
-    else ans.second=true; 
+    if (fabs(_RE-R[CurRegion][lastRadiusIndex]-Bot)<1e-6) ans.second=false;
+    else ans.second=true;
 
     if (DebugInfo) {
         cout << "Ray turns? " << (ans.second?"Yes":"No") << ". Actual happened: " << _RE-R[CurRegion][lastRadiusIndex] << " / " << Bot << endl;
@@ -130,7 +138,11 @@ void followThisRay(
     size_t RayLength=degree.size();
     if (RayLength==1) {
         RayHeads[i].RemainingLegs=0;
-        Running.fetch_sub(1);
+
+        unique_lock<mutex> lck(mtx);
+        emptySlot.push(mySlot);
+        cv.notify_one();
+
         return;
     }
 
@@ -140,7 +152,11 @@ void followThisRay(
     //     int PrevID=RayHeads[i].Prev;
     //     if (PrevID!=-1 && !RayHeads[PrevID].GoUp && !RayHeads[PrevID].IsP && RayHeads[i].GoUp && RayHeads[i].IsP && ans.second) {
     //         RayHeads[i].RemainingLegs=0;
-    //         Running.fetch_sub(1);
+    //
+    //         unique_lock<mutex> lck(mtx);
+    //         emptySlot.push(mySlot);
+    //         cv.notify_one();
+
     //         return;
     //     }
 
@@ -535,16 +551,21 @@ void followThisRay(
         }
 
         if (StopAtSurface==1) {
-            int z=RayHeads[i].RemainingLegs;
-            if (branches>1) z=(1-pow(branches,RayHeads[i].RemainingLegs))/(1-branches);
-            Estimation.fetch_sub(branches*z);
-            Running.fetch_sub(1);
+
+            unique_lock<mutex> lck(mtx);
+            emptySlot.push(mySlot);
+            cv.notify_one();
+
             return;
         }
     }
 
     if (RayHeads[i].RemainingLegs==0) {
-        Running.fetch_sub(1);
+
+        unique_lock<mutex> lck(mtx);
+        emptySlot.push(mySlot);
+        cv.notify_one();
+
         return;
     }
 
@@ -587,7 +608,7 @@ void followThisRay(
         double sign1=(T_PP.imag()==0?(T_PP.real()<0?-1:1):1);
         double sign2=(T_SS.imag()==0?(T_SS.real()<0?-1:1):1);
         newRay.Amp*=(newRay.IsP?(sign1*abs(T_PP)):(sign2*abs(T_SS)));
-        RayHeads[Cnt.fetch_add(1)]=newRay;
+        RayHeads[finalSize.fetch_add(1)]=newRay;
     }
 
     if (td) {
@@ -603,7 +624,7 @@ void followThisRay(
         double sign1=(T_PS.imag()==0?(T_PS.real()<0?-1:1):1);
         double sign2=(T_SP.imag()==0?(T_SP.real()<0?-1:1):1);
         newRay.Amp*=(newRay.IsP?(sign1*abs(T_PS)):(sign2*abs(T_SP)));
-        RayHeads[Cnt.fetch_add(1)]=newRay;
+        RayHeads[finalSize.fetch_add(1)]=newRay;
     }
 
     if (rd) {
@@ -618,13 +639,8 @@ void followThisRay(
         double sign1=(R_PS.imag()==0?(R_PS.real()<0?-1:1):1);
         double sign2=(R_SP.imag()==0?(R_SP.real()<0?-1:1):1);
         newRay.Amp*=(newRay.IsP?(sign1*abs(R_PS)):(sign2*abs(R_SP)));
-        RayHeads[Cnt.fetch_add(1)]=newRay;
+        RayHeads[finalSize.fetch_add(1)]=newRay;
     }
-
-    int y=(TS && !ts)+(TD && !td)+(RD && !rd);
-    int z=RayHeads[i].RemainingLegs;
-    if (branches>1) z=(1-pow(branches,RayHeads[i].RemainingLegs))/(1-branches);
-    Estimation.fetch_sub(y*z);
 
     // rs is always possible.
     if (RS) {
@@ -638,10 +654,13 @@ void followThisRay(
         double sign1=(R_PP.imag()==0?(R_PP.real()<0?-1:1):1);
         double sign2=(R_SS.imag()==0?(R_SS.real()<0?-1:1):1);
         newRay.Amp*=(newRay.IsP?(sign1*abs(R_PP)):(sign2*abs(R_SS)));
-        RayHeads[Cnt.fetch_add(1)]=newRay;
+        RayHeads[finalSize.fetch_add(1)]=newRay;
     }
 
-    Running.fetch_sub(1);
+    unique_lock<mutex> lck(mtx);
+    emptySlot.push(mySlot);
+    cv.notify_one();
+
     return;
 }
 
@@ -666,6 +685,9 @@ void PreprocessAndRun(
     vector<Ray> RayHeads;
     if (potentialSize>RayHeads.max_size()) {
         throw runtime_error("Too many rays to handle: decrease the number of legs or the number of input rays...");
+    }
+    if (initRaySteps.empty()) {
+        return;
     }
 
     // Create 1D reference layers. (R[0]. 0 means 1D reference model)
@@ -834,48 +856,57 @@ void PreprocessAndRun(
                     initRayTheta[i],_RE-initRayDepth[i],0,0,rayp,initRayTakeoff[i]));
     }
 
-    atomic<size_t> Cnt;
-    Cnt.store(RayHeads.size());
-    atomic<int> Estimation;
-    Estimation.store((int)potentialSize);
+    atomic<size_t> finalSize;
+    finalSize.store(RayHeads.size());
     RayHeads.resize(potentialSize);
 
     // Start ray tracing. (Finally!)
     //
     // Process each "Ray" leg in "RayHeads".
     // For future legs generated by reflction/refraction, create new "Ray" and assign it to the proper position in "RayHeads" vector.
-    vector<thread> allThread(RayHeads.capacity());
+    vector<thread> allThreads(nThread);
+    for (size_t i=0; i<nThread; ++i) {
+        emptySlot.push(i);
+    }
 
-    size_t Doing=0,Done=0;
-    atomic<size_t> Running;
-    Running.store(0);
-    while (Doing!=Cnt.load() || Running.load()!=0) {
-        *Observer=(int)Doing-(int)nThread;
+    size_t Index=0;
+    while (true) {
 
-        if (Running.load()<nThread && Doing<Cnt.load()) {
-            Running.fetch_add(1);
-            allThread[Doing]=thread(
-                followThisRay,Doing, std::ref(Cnt), std::ref(Estimation), std::ref(Running),
-                ReachSurfaces,ReachSurfacesSize,RayInfo,RayInfoSize, RaysTheta, RaysN, RaysRadius,
-                std::ref(RayHeads), branches, std::cref(specialDepths),
-                std::cref(R),std::cref(Vp),std::cref(Vs),std::cref(Rho),
-                std::cref(Regions),std::cref(RegionBounds),std::cref(dVp),std::cref(dVs),std::cref(dRho),
-                std::cref(DebugInfo),std::cref(TS),std::cref(TD),std::cref(RS),std::cref(RD),std::cref(StopAtSurface));
-            if (Doing>0 && Doing%10000==0) {
-                for (size_t i=Done;i<Doing-nThread;++i)
-                    allThread[i].join();
-                Done=Doing-nThread;
+        unique_lock<mutex> lck(mtx);
+        while (emptySlot.empty()) {
+            cv.wait(lck);
+            if (allThreads[emptySlot.back()].joinable()) {
+                allThreads[emptySlot.back()].join();
             }
-            ++Doing;
         }
-        else usleep(1000);
 
-    } // End of ray tracing.
 
-    for (size_t i=Done;i<Doing;++i)
-        allThread[i].join();
+        while (Index>=finalSize.load()) {
+            if (emptySlot.size()==nThread) {
+                return;
+            }
+            cv.wait(lck);
+            if (allThreads[emptySlot.back()].joinable()) {
+                allThreads[emptySlot.back()].join();
+            }
+        }
 
-//     cout << Cnt.load() << "/" << RayHeads.capacity() << "/" << Estimation.load() << endl;
+        if (allThreads[emptySlot.front()].joinable()) {
+            allThreads[emptySlot.front()].join();
+        }
+        allThreads[emptySlot.front()] = thread(followThisRay, Index, emptySlot.front(), ref(finalSize),
+            ReachSurfaces,ReachSurfacesSize,RayInfo,RayInfoSize, RaysTheta, RaysN, RaysRadius,
+            ref(RayHeads), branches, cref(specialDepths),
+            cref(R),cref(Vp),cref(Vs),cref(Rho),
+            cref(Regions),cref(RegionBounds),cref(dVp),cref(dVs),cref(dRho),
+            cref(DebugInfo),cref(TS),cref(TD),cref(RS),cref(RD),cref(StopAtSurface));
+
+        emptySlot.pop();
+
+        ++Index;
+    }
+
+    return;
 }
 
 void rayTracingInSwift(
@@ -971,4 +1002,3 @@ void rayTracingInSwift(
         RectifyLimit,TS,TD,RS,RD,nThread,DebugInfo,StopAtSurface,(size_t)branches,potentialSize,
         *ReachSurfaces,ReachSurfacesSize,*RayInfo,RayInfoSize,RegionN,RegionsTheta,RegionsRadius,RaysTheta,RaysN,RaysRadius,Observer);
 }
-
