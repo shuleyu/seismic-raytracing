@@ -21,7 +21,8 @@ queue<size_t> emptySlot;
 vector<double> MakeRef(const double &depth,const vector<vector<double>> &dev){
     double rho=Drho(depth),vs=Dvs(depth),vp=Dvp(depth);
     for (const auto &item: dev) {
-        if (item[0]<=depth && depth<=item[1]) {
+        if (item[0]<depth && depth<=item[1]) {
+
             vp*=(1+item[2]/100);
             vs*=(1+item[3]/100);
             rho*=(1+item[4]/100);

@@ -14,10 +14,10 @@ cd ${PLOTDIR}/tmpdir_$$
 trap "rm -rf ${PLOTDIR}/tmpdir_$$; exit 1" SIGINT EXIT
 
 # Plot parameters.
-gmtset PAPER_MEDIA = letter
-gmtset ANNOT_FONT_SIZE_PRIMARY = 8p
-gmtset LABEL_FONT_SIZE = 10p
-gmtset LABEL_OFFSET = 0.05c
+gmt set PS_MEDIA = letter
+gmt set FONT_ANNOT_PRIMARY = 8p
+gmt set FONT_LABEL = 10p
+gmt set MAP_LABEL_OFFSET = 0.05c
 
 color[1]=darkred
 color[2]=green
@@ -49,37 +49,37 @@ do
     REG="-R0/360/0/${RE}"
 
     # Move to center.
-    psxy ${PROJ} ${REG} -K -Xc -Yc > ${OUTFILE} << EOF
+    gmt psxy ${PROJ} ${REG} -K -Xc -Yc > ${OUTFILE} << EOF
 EOF
 
     # Move to the plot point.
     Y=`echo ${PLOTSIZE} ${Theta} ${Radius} ${RE}| awk '{print ($3-$4)/$4/2*$1}'`
-    psxy -J -R -O -K -Y${Y}i >> ${OUTFILE} << EOF
+    gmt psxy -J -R -O -K -Y${Y}i >> ${OUTFILE} << EOF
 EOF
 
     # distance grid.
     [ `echo "${PLOTSIZE}>10" | bc` -eq 1 ] && BAXI="-Ba1f1" || BAXI="-Ba10f1"
-    gmtset TICK_LENGTH = 0.2c
-    gmtset ANNOT_OFFSET_PRIMARY = 0.2c
-    psbasemap ${PROJ} ${REG} ${BAXI} -O -K >> ${OUTFILE}
+    gmt set MAP_TICK_LENGTH = 0.2c
+    gmt set MAP_ANNOT_OFFSET_PRIMARY = 0.2c
+    gmt psbasemap ${PROJ} ${REG} ${BAXI} -O -K >> ${OUTFILE}
 
     # plot mantle.
-    psxy ${PROJ} ${REG} -Sc${PLOTSIZE}i -G230/230/230 -O -K >> ${OUTFILE} << EOF
+    gmt psxy ${PROJ} ${REG} -Sc${PLOTSIZE}i -G230/230/230 -O -K >> ${OUTFILE} << EOF
 0 0
 EOF
 
     # plot transition zone.
-    psxy ${PROJ} ${REG} -Sc`echo "${PLOTSIZE}/${RE}*(${RE}-660/2-410/2)"| bc -l`i -W`echo "${PLOTSIZE}/${RE}*(660-410)/2" |bc -l`i,200/200/200 -O -K >> ${OUTFILE} << EOF
+    gmt psxy ${PROJ} ${REG} -Sc`echo "${PLOTSIZE}/${RE}*(${RE}-660/2-410/2)"| bc -l`i -W`echo "${PLOTSIZE}/${RE}*(660-410)/2" |bc -l`i,200/200/200 -O -K >> ${OUTFILE} << EOF
 0 0
 EOF
 
     # plot outter core.
-    psxy ${PROJ} ${REG} -Sc`echo "${PLOTSIZE}/${RE}*3480.0"| bc -l`i -G170/170/170 -O -K >> ${OUTFILE} << EOF
+    gmt psxy ${PROJ} ${REG} -Sc`echo "${PLOTSIZE}/${RE}*3480.0"| bc -l`i -G170/170/170 -O -K >> ${OUTFILE} << EOF
 0 0
 EOF
 
     # plot inner core.
-    psxy ${PROJ} ${REG} -Sc`echo "${PLOTSIZE}/${RE}*1221.5"| bc -l`i -G140/140/140 -O -K >> ${OUTFILE} << EOF
+    gmt psxy ${PROJ} ${REG} -Sc`echo "${PLOTSIZE}/${RE}*1221.5"| bc -l`i -G140/140/140 -O -K >> ${OUTFILE} << EOF
 0 0
 EOF
 
@@ -106,8 +106,10 @@ EOF
         [ `echo "${Amp}<0.1" | bc` -eq 1 ] && Amp=0.1
         [ ${LineThicknessUseAmp} -ne 1 ] && Amp=0.5
 
-        psxy ${file} ${PROJ} ${REG} -W${Amp}p,${plotColor} -m -O -K >> ${OUTFILE}
+        gmt psxy ${file} ${PROJ} ${REG} -W${Amp}p,${plotColor} -O -K >> ${OUTFILE}
     done
+
+#     gmt psxy /Users/shuleyu/Documents/Research/t063.updateTomography.200304/taup_path.gmt ${PROJ} ${REG} -W0.3p,black -O -K >> ${OUTFILE}
 
     for file in `ls ${WORKDIR}/${RayFilePrefix}*`
     do
@@ -120,8 +122,11 @@ EOF
         TargetR=`echo ${BeginR} ${EndR} | awk '{print $1+($2-$1)*0.1}'`
         Position=`awk -v T=${TargetR} 'NR>1 {if ($2>T) print $1,$2-T; else print $1,T-$2}' ${file} | sort -g -k 2,2 | head -n 1 | awk '{print $1}'`
 
-        pstext ${PROJ} ${REG} -N -O -K >> ${OUTFILE} << EOF
-${Position} ${TargetR} 5 0 0 CM ${file##*_}
+        cat > tmpfile_text_$$ << EOF
+${Position} ${TargetR} ${file##*_}
+EOF
+
+        gmt pstext ${PROJ} ${REG} -F+jCM+f5p -N -O -K >> ${OUTFILE} << EOF
 EOF
     done
 
@@ -132,8 +137,11 @@ EOF
         ${SRCDIR}/FindColumn.sh ${WORKDIR}/${ReceiverFileName} "<Dist> <TravelTime>" > tmpfile_$$
         while read dist tt
         do
-            pstext ${PROJ} ${REG} -N -O -K >> ${OUTFILE} << EOF
-${dist} `echo ${PLOTSIZE} ${RE} | awk '{print $2+$2*2/$1*0.5}'` 15 0 0 LB ${dist} deg. ${tt} sec.
+
+            cat > tmpfile_text_$$ << EOF
+${dist} `echo ${PLOTSIZE} ${RE} | awk '{print $2+$2*2/$1*0.5}'` ${dist} deg. ${tt} sec.
+EOF
+            gmt pstext ${PROJ} ${REG} -F+jLB+f15p -N -O -K >> ${OUTFILE} << EOF
 EOF
         done < tmpfile_$$
     fi
@@ -142,7 +150,7 @@ EOF
     awk '{print $1,$2}' ${WORKDIR}/tmpfile_InputRays_${RunNumber} | sort -u > tmpfile_sources_$$
     while read theta depth
     do
-        psxy ${PROJ} ${REG} -Sa0.2i -Gyellow -N -O -K >> ${OUTFILE} << EOF
+        gmt psxy ${PROJ} ${REG} -Sa0.2i -Gyellow -N -O -K >> ${OUTFILE} << EOF
 ${theta} `echo "${RE}-${depth}" | bc -l`
 EOF
     done < tmpfile_sources_$$
@@ -150,18 +158,18 @@ EOF
     # plot velocity anomalies.
     for file in `ls ${WORKDIR}/${PolygonFilePrefix}* 2>/dev/null`
     do
-        psxy ${PROJ} ${REG} ${file} -m -L -W0.3p,black -O -K  >> ${OUTFILE}
+        gmt psxy ${PROJ} ${REG} ${file} -L -W0.3p,black -O -K  >> ${OUTFILE}
     done
 
     # plot basemap at the CMB.
     PROJ2=`echo "${PLOTSIZE} ${Theta} ${RE}" | awk '{print "-JPa"$1*3480/$3"i/"$2}'`
     MOVE=`echo "${PLOTSIZE} ${RE}" |  awk '{print $1/2*2891/$2}'`
-    gmtset TICK_LENGTH = -0.2c
-    gmtset ANNOT_OFFSET_PRIMARY = -0.2c
-    psbasemap ${PROJ2} ${REG} ${BAXI} -X${MOVE}i -Y${MOVE}i -O -K >> ${OUTFILE}
+    gmt set MAP_TICK_LENGTH = -0.2c
+    gmt set MAP_ANNOT_OFFSET_PRIMARY = -0.2c
+    gmt psbasemap ${PROJ2} ${REG} ${BAXI} -X${MOVE}i -Y${MOVE}i -O -K >> ${OUTFILE}
 
     # seal the plot.
-    psxy -J -R -O >> ${OUTFILE} << EOF
+    gmt psxy -J -R -O >> ${OUTFILE} << EOF
 EOF
 
 done < ${WORKDIR}/tmpfile_PlotWhere_${RunNumber} # done plot position loop.

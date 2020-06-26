@@ -1,7 +1,7 @@
 
 # Output directory and output filenames (or prefix).
 
-<WORKDIR>             /Volumes/Homes/shuleyu/PROJ_Fast/t058.tmp2
+<WORKDIR>             /Users/shuleyu/PROJ_Fast/t058.tmp2
 
 <ReceiverFileName>    Receivers.txt
 
@@ -12,7 +12,7 @@
 
 # Calculation set-up.
 
-<nThread>             5
+<nThread>             4
 
                       -- an integer >=1. If >1, will utilized the multi-threading to increase calculation speed.
 
