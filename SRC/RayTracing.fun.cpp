@@ -70,9 +70,11 @@ void followThisRay(
     const bool &DebugInfo,const bool &TS,const bool &TD,const bool &RS,const bool &RD, const bool &StopAtSurface){
 
     if (RayHeads[i].RemainingLegs==0 || i>=finalSize.load()) {
+
         unique_lock<mutex> lck(mtx);
         emptySlot.push(mySlot);
         cv.notify_one();
+
         return;
     }
 
@@ -137,8 +139,10 @@ void followThisRay(
 
     // If the new leg is trivia, no further operation needed.
     size_t RayLength=degree.size();
-    if (RayLength==1) {
-        RayHeads[i].RemainingLegs=0;
+
+    if (RayLength == 1) {
+
+        RayHeads[i].RemainingLegs = 0;
 
         unique_lock<mutex> lck(mtx);
         emptySlot.push(mySlot);
@@ -561,7 +565,7 @@ void followThisRay(
         }
     }
 
-    if (RayHeads[i].RemainingLegs==0) {
+    if (RayHeads[i].RemainingLegs == 0) {
 
         unique_lock<mutex> lck(mtx);
         emptySlot.push(mySlot);
@@ -665,7 +669,8 @@ void followThisRay(
     return;
 }
 
-void PreprocessAndRun(
+void PreprocessAndRun (
+
         const vector<int> &initRaySteps,const vector<int> &initRayComp,const vector<int> &initRayColor,
         const vector<double> &initRayTheta,const vector<double> &initRayDepth,const vector<double> &initRayTakeoff,
         const vector<double> &gridDepth1,const vector<double> &gridDepth2,const vector<double> &gridInc,
@@ -680,11 +685,11 @@ void PreprocessAndRun(
 
         char **ReachSurfaces, int *ReachSurfacesSize, char **RayInfo, int *RayInfoSize,
         int *RegionN,double **RegionsTheta,double **RegionsRadius,
-        double **RaysTheta, int *RaysN, double **RaysRadius,int *Observer){
+        double **RaysTheta, int *RaysN, double **RaysRadius,int *Observer) {
 
     // Ray nodes.
     vector<Ray> RayHeads;
-    if (potentialSize>RayHeads.max_size()) {
+    if (potentialSize > RayHeads.max_size()) {
         throw runtime_error("Too many rays to handle: decrease the number of legs or the number of input rays...");
     }
     if (initRaySteps.empty()) {
@@ -870,43 +875,55 @@ void PreprocessAndRun(
         emptySlot.push(i);
     }
 
-    size_t Index=0;
+    size_t Index = 0;
+
     while (true) {
 
         unique_lock<mutex> lck(mtx);
-        while (emptySlot.empty()) {
-            cv.wait(lck);
-            if (allThreads[emptySlot.back()].joinable()) {
-                allThreads[emptySlot.back()].join();
+
+        cv.wait(lck, [](){ return !emptySlot.empty(); }); // if emptySlot is empty, release the lock and wait for signal.
+
+        // emptySlot is not empty, holding the lock.
+
+        if (Index < finalSize.load()) { // if there's more job to do, do the next job.
+
+            if (allThreads[emptySlot.front()].joinable()) {
+
+                allThreads[emptySlot.front()].join();
             }
+
+cout << Index << " / "  << finalSize.load() << endl;
+
+            allThreads[emptySlot.front()] = thread(followThisRay, Index, emptySlot.front(), ref(finalSize),
+                ReachSurfaces, ReachSurfacesSize, RayInfo, RayInfoSize, RaysTheta, RaysN, RaysRadius,
+                ref(RayHeads), branches, cref(specialDepths),
+                cref(R), cref(Vp), cref(Vs), cref(Rho),
+                cref(Regions), cref(RegionBounds), cref(dVp), cref(dVs), cref(dRho),
+                cref(DebugInfo), cref(TS), cref(TD), cref(RS), cref(RD), cref(StopAtSurface));
+
+            emptySlot.pop();
+
+            ++Index;
         }
+        else { // there's no more work to do.
 
+            if (emptySlot.size() == nThread) { // if there's no running thread left, join threads and exit.
 
-        while (Index>=finalSize.load()) {
-            if (emptySlot.size()==nThread) {
+                for (auto &t : allThreads) {
+
+                    if (t.joinable()) {
+
+                        t.join();
+                    }
+                }
                 return;
             }
-            cv.wait(lck);
-            if (allThreads[emptySlot.back()].joinable()) {
-                allThreads[emptySlot.back()].join();
+            else { // if there's running jobs, release the lock and wait for thread finished signal.
+
+                cv.wait(lck);
             }
         }
-
-        if (allThreads[emptySlot.front()].joinable()) {
-            allThreads[emptySlot.front()].join();
-        }
-        allThreads[emptySlot.front()] = thread(followThisRay, Index, emptySlot.front(), ref(finalSize),
-            ReachSurfaces,ReachSurfacesSize,RayInfo,RayInfoSize, RaysTheta, RaysN, RaysRadius,
-            ref(RayHeads), branches, cref(specialDepths),
-            cref(R),cref(Vp),cref(Vs),cref(Rho),
-            cref(Regions),cref(RegionBounds),cref(dVp),cref(dVs),cref(dRho),
-            cref(DebugInfo),cref(TS),cref(TD),cref(RS),cref(RD),cref(StopAtSurface));
-
-        emptySlot.pop();
-
-        ++Index;
     }
-
     return;
 }
 

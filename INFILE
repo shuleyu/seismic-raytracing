@@ -12,7 +12,7 @@
 
 # Calculation set-up.
 
-<nThread>             4
+<nThread>             5
 
                       -- an integer >=1. If >1, will utilized the multi-threading to increase calculation speed.
 
@@ -66,6 +66,7 @@
 0   500    17    P    0    6
 
 <InputRays_END>
+
 
 
 ## 1D layer grid (in km).
