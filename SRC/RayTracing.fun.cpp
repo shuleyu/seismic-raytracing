@@ -582,7 +582,7 @@ void followThisRay(
     // Notice reflection with the same wave type is always allowed. ("rs" is always possible)
 
     /// Mark it when ray turns.
-    if (!RayHeads[i].Turn && ans.second && RayEnd==RayLength) RayHeads[i].Turn=true;
+    if (!RayHeads[i].Turn && ans.second && RayEnd == (int)RayLength) RayHeads[i].Turn=true;
 
     /// if ray going down and turns and didn't hit the junction.
     if (!RayHeads[i].GoUp && ans.second && CurRegion==NextRegion) ts=td=rd=false;
