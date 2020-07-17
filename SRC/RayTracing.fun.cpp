@@ -1,3 +1,6 @@
+#include<mutex>
+#include<thread>
+#include<condition_variable>
 #include<queue>
 
 #include<Ray.hpp>
