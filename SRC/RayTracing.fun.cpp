@@ -895,8 +895,6 @@ void PreprocessAndRun (
                 allThreads[emptySlot.front()].join();
             }
 
-cout << Index << " / "  << finalSize.load() << endl;
-
             allThreads[emptySlot.front()] = thread(followThisRay, Index, emptySlot.front(), ref(finalSize),
                 ReachSurfaces, ReachSurfacesSize, RayInfo, RayInfoSize, RaysTheta, RaysN, RaysRadius,
                 ref(RayHeads), branches, cref(specialDepths),
