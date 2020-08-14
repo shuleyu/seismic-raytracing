@@ -631,7 +631,8 @@ void followThisRay(
         newRay.InRegion=NextRegion;
         double sign1=(T_PS.imag()==0?(T_PS.real()<0?-1:1):1);
         double sign2=(T_SP.imag()==0?(T_SP.real()<0?-1:1):1);
-        newRay.Amp*=(newRay.IsP?(sign1*abs(T_PS)):(sign2*abs(T_SP)));
+        newRay.Amp*=(newRay.IsP?(sign2*abs(T_SP)):(sign1*abs(T_PS)));
+        newRay.Comp=(newRay.IsP?"P":"SV");
         RayHeads[finalSize.fetch_add(1)]=newRay;
     }
 
@@ -646,7 +647,8 @@ void followThisRay(
         newRay.GoLeft=(Takeoff_rd<0);
         double sign1=(R_PS.imag()==0?(R_PS.real()<0?-1:1):1);
         double sign2=(R_SP.imag()==0?(R_SP.real()<0?-1:1):1);
-        newRay.Amp*=(newRay.IsP?(sign1*abs(R_PS)):(sign2*abs(R_SP)));
+        newRay.Amp*=(newRay.IsP?(sign2*abs(R_SP)):(sign1*abs(R_PS)));
+        newRay.Comp=(newRay.IsP?"P":"SV");
         RayHeads[finalSize.fetch_add(1)]=newRay;
     }
 

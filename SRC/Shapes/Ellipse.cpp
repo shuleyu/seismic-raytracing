@@ -14,8 +14,6 @@ int main(){
     double halfWidth = 1, centerX = 30, dx = 0.005;
     double bottomY = 2891, height = 30;
 
-
-
     ofstream fpout("Ellipse.txt");
     for (double x = -halfWidth; x <= halfWidth; x += dx){
 
